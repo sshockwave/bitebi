@@ -1,6 +1,7 @@
 package message
 
 import (
+    "errors"
     "github.com/sshockwave/bitebi/utils"
 )
 
@@ -35,11 +36,16 @@ func NewInventory(reader utils.BufReader) (ret Inventory, err error) {
 type InvMsg struct {
     inv []Inventory
 }
+const invMaxItemCount = 50_000;
+var invItemCountExceeded = errors.New("invItemCountExceeded")
 func NewInvMsg(reader utils.BufReader) (ret InvMsg, err error) {
     var cnt uint64
     cnt, err = reader.ReadCompactUint()
     if err != nil {
         return
+    }
+    if cnt > invMaxItemCount {
+        return ret, invItemCountExceeded
     }
     ret.inv = make([]Inventory, cnt)
     for i := uint64(0); i < cnt; i++ {
