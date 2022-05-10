@@ -1,26 +1,26 @@
 package p2p
 
 import (
-    "bytes"
+    "io"
     "errors"
     "github.com/sshockwave/bitebi/utils"
 )
 
 // https://developer.bitcoin.org/reference/p2p_networking.html#getblocks
 type GetBlocksMsg struct {
-    version uint32
+    Version uint32
     // Hashes should be provided in reverse order of block height,
     // so highest-height hashes are listed first and lowest-height hashes are listed last.
-    block_header_hashes [][32]byte
+    BlockHeaderHashes [][32]byte
     // if all zero, request an "inv" message
     // otherwise its the last header hash being requested
     // not included in the array above
-    stop_hash [32]byte
+    StopHash [32]byte
 }
 var maxSizeExceededError = errors.New("maxSizeExceededError")
-func NewGetBlocksMsg(data []byte) (ret GetBlocksMsg, err error) {
-    reader := utils.NewBufReader(bytes.NewReader(data))
-    ret.version, err = reader.ReadUint32()
+func NewGetBlocksMsg(_reader io.Reader) (ret GetBlocksMsg, err error) {
+    reader := utils.NewBufReader(_reader)
+    ret.Version, err = reader.ReadUint32()
     if err != nil {
         return
     }
@@ -32,13 +32,13 @@ func NewGetBlocksMsg(data []byte) (ret GetBlocksMsg, err error) {
     if hash_count > MAX_SIZE {
         return ret, maxSizeExceededError
     }
-    ret.block_header_hashes = make([][32]byte, hash_count)
+    ret.BlockHeaderHashes = make([][32]byte, hash_count)
     for i := uint64(0); i < hash_count; i++ {
-        ret.block_header_hashes[i], err = reader.Read32Bytes()
+        ret.BlockHeaderHashes[i], err = reader.Read32Bytes()
         if err != nil {
             return
         }
     }
-    ret.stop_hash, err = reader.Read32Bytes()
+    ret.StopHash, err = reader.Read32Bytes()
     return
 }
