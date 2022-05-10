@@ -6,8 +6,8 @@ import (
     "bufio"
     "fmt"
     "io"
-    "crypto/sha256"
     "encoding/binary"
+    "github.com/sshockwave/bitebi/utils"
 )
 
 type Message struct {
@@ -55,8 +55,7 @@ func NewConnection(conn net.Conn, net_config NetConfig) *Connection {
                 fmt.Println("[ERROR] Error occurred while reading payload")
                 break
             }
-            recv_chksum := sha256.Sum256(payload)
-            recv_chksum = sha256.Sum256(recv_chksum[:])
+            recv_chksum := utils.Sha256Twice(payload)
             if bytes.Compare(recv_chksum[:4], header[20:24]) != 0 {
                 fmt.Println("[ERROR] Checksum do not match in message, discarding")
                 continue
