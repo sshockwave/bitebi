@@ -1,10 +1,11 @@
 package p2p
+
 // https://developer.bitcoin.org/reference/p2p_networking.html
 
 type NetConfig struct {
-    defaultPort int
-    startString [4]byte
-    maxNBits uint32
+    DefaultPort int
+    StartString [4]byte
+    MaxNBits uint32
 }
 
 // Constants taken from

@@ -1,13 +1,14 @@
 package p2p
 
 import (
-    "bytes"
-    "net"
-    "bufio"
-    "fmt"
-    "io"
-    "encoding/binary"
-    "github.com/sshockwave/bitebi/utils"
+	"bufio"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"io"
+	"net"
+
+	"github.com/sshockwave/bitebi/utils"
 )
 
 type Message struct {
@@ -39,13 +40,13 @@ func NewConnection(conn net.Conn, net_config NetConfig) *Connection {
                 fmt.Println("[ERROR] Error returned when reading header")
                 break
             }
-            if bytes.Compare(net_config.startString[:], header[0:4]) != 0 {
+            if bytes.Compare(net_config.StartString[:], header[0:4]) != 0 {
                 fmt.Println("[ERROR] Invalid start string, discarding")
                 break
             }
             command := string(bytes.TrimRight(header[4:16], "\x00"))
             payload_size := binary.LittleEndian.Uint32(header[16:20])
-            if payload_size > net_config.maxNBits {
+            if payload_size > net_config.MaxNBits {
                 fmt.Println("[ERROR] Payload too large")
                 break
             }

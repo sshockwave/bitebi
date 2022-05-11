@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
 )
 
@@ -13,6 +14,7 @@ type CmdApp struct {
 	scanner    *bufio.Scanner
 	blockchain BlockChain
 	peer       Peer
+	hasPeer    bool
 	name       string
 }
 
@@ -45,8 +47,18 @@ func (c *CmdApp) Serve() {
 			// input extra
 		case "showbalance":
 			// display the balance of an account
-		}
-		for c.scanner.Scan() {
+		case "serve":
+			if c.hasPeer {
+				fmt.Println("A server is already running!")
+			} else {
+				var err error
+				c.peer, err = NewPeer(&c.blockchain, p2p.GetMainnet(), "0.0.0.0", -1)
+				if err != nil {
+					fmt.Println("[ERROR] " + err.Error())
+				} else {
+					c.hasPeer = true
+				}
+			}
 		}
 	}
 	if c.scanner.Err() != nil {
