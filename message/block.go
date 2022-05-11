@@ -1,6 +1,7 @@
 package message
 
 import (
+	"errors"
 	"time"
 
 	"github.com/sshockwave/bitebi/utils"
@@ -40,7 +41,9 @@ func (b *Block) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transaction, nBits uint32, nonce uint32) Block {
+var blockHashNotValid = errors.New("blockHashNotValid")
+
+func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transaction, nBits uint32, nonce uint32) (Block, error) {
 	var block Block
 	block.version = version
 	block.previous_block_header_hash = previous_block_header_hash
@@ -49,12 +52,17 @@ func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transa
 	block.nBits = nBits
 	block.nonce = nonce
 
-	// if utils.GetHash(block)
+	hash, _ := utils.GetHash(&block)
+	valid := false
+	for i := 0; i < int(nBits); i++ {
+		if hash[i/8] <= 255>>(i%8+1) {
+			valid = true
+		}
+	}
 
-	return block
+	if valid == true {
+		return block, nil
+	} else {
+		return block, blockHashNotValid
+	}
 }
-
-/*func hash(src []byte) [32]byte {
-	res := sha256.Sum256(src)
-	return res
-}*/
