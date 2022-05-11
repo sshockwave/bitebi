@@ -8,36 +8,36 @@ import (
 )
 
 type Block struct {
-	version                    int32
-	previous_block_header_hash [32]byte
-	merkle_root_hash           [32]byte
-	time                       uint32
-	nBits                      uint32
-	nonce                      uint32
+	Version                    int32
+	Previous_block_header_hash [32]byte
+	Merkle_root_hash           [32]byte
+	Time                       uint32
+	NBits                      uint32
+	Nonce                      uint32
 }
 
 func (b *Block) PutBuffer(writer utils.BufWriter) (err error) {
-	err = writer.WriteInt32(b.version)
+	err = writer.WriteInt32(b.Version)
 	if err != nil {
 		return
 	}
-	err = writer.Write32Bytes(b.previous_block_header_hash)
+	err = writer.Write32Bytes(b.Previous_block_header_hash)
 	if err != nil {
 		return
 	}
-	err = writer.Write32Bytes(b.merkle_root_hash)
+	err = writer.Write32Bytes(b.Merkle_root_hash)
 	if err != nil {
 		return
 	}
-	err = writer.WriteUint32(b.time)
+	err = writer.WriteUint32(b.Time)
 	if err != nil {
 		return
 	}
-	err = writer.WriteUint32(b.nBits)
+	err = writer.WriteUint32(b.NBits)
 	if err != nil {
 		return
 	}
-	err = writer.WriteUint32(b.nonce)
+	err = writer.WriteUint32(b.Nonce)
 	return
 }
 
@@ -45,12 +45,12 @@ var blockHashNotValid = errors.New("blockHashNotValid")
 
 func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transaction, nBits uint32, nonce uint32) (Block, error) {
 	var block Block
-	block.version = version
-	block.previous_block_header_hash = previous_block_header_hash
-	block.merkle_root_hash = makeMerkleTree(TS)
-	block.time = uint32(time.Now().Unix())
-	block.nBits = nBits
-	block.nonce = nonce
+	block.Version = version
+	block.Previous_block_header_hash = previous_block_header_hash
+	block.Merkle_root_hash = makeMerkleTree(TS)
+	block.Time = uint32(time.Now().Unix())
+	block.NBits = nBits
+	block.Nonce = nonce
 
 	hash, _ := utils.GetHash(&block)
 	valid := false

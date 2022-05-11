@@ -7,39 +7,39 @@ import (
 )
 
 type Transaction struct {
-	version      int32
-	tx_in_count  uint64
-	tx_in        txIn
-	tx_out_count uint64
-	tx_out       txOut
-	lock_time    uint32
+	Version      int32
+	Tx_in_count  uint64
+	Tx_in        []txIn
+	Tx_out_count uint64
+	Tx_out       []txOut
+	Lock_time    uint32
 }
 
 func (t *Transaction) PutBuffer(writer utils.BufWriter) (err error) {
-	err = writer.WriteInt32(t.version)
+	err = writer.WriteInt32(t.Version)
 	if err != nil {
 		return
 	}
-	err = t.tx_in.PutBuffer(writer)
+	err = t.Tx_in.PutBuffer(writer)
 	if err != nil {
 		return
 	}
-	err = t.tx_out.PutBuffer(writer)
+	err = t.Tx_out.PutBuffer(writer)
 	if err != nil {
 		return
 	}
-	err = writer.WriteUint32(t.lock_time)
+	err = writer.WriteUint32(t.Lock_time)
 	return
 }
 
-func CreateTransaction(version int32, tx_in_count uint64, tx_in txIn, tx_out_count uint64, tx_out txOut, lock_time uint32) Transaction {
+func CreateTransaction(version int32, tx_in_count uint64, tx_in []txIn, tx_out_count uint64, tx_out []txOut, lock_time uint32) Transaction {
 	var ts Transaction
-	ts.version = version
-	ts.tx_in_count = tx_in_count
-	ts.tx_in = tx_in
-	ts.tx_out_count = tx_out_count
-	ts.tx_out = tx_out
-	ts.lock_time = lock_time
+	ts.Version = version
+	ts.Tx_in_count = tx_in_count
+	ts.Tx_in = tx_in
+	ts.Tx_out_count = tx_out_count
+	ts.Tx_out = tx_out
+	ts.Lock_time = lock_time
 	return ts
 }
 
