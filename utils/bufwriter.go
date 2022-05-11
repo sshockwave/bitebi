@@ -1,9 +1,8 @@
 package utils
 
-
 import (
-    "bytes"
-    "encoding/binary"
+	"bytes"
+	"encoding/binary"
 )
 
 
@@ -73,4 +72,12 @@ func (b *BufWriter) WriteCompactUint(v uint64) (err error) {
         return err
     }
     return b.WriteUint64(v)
+}
+
+func (b *BufWriter) WriteInt32(v int32) (err error) {
+    return binary.Write(&b.out, binary.LittleEndian, v)
+}
+
+func (b *BufWriter) WriteInt64(v int64) (err error) {
+    return binary.Write(&b.out, binary.LittleEndian, v)
 }

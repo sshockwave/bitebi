@@ -3,6 +3,8 @@ package message
 import (
 	"crypto/sha256"
 	"fmt"
+
+	"github.com/sshockwave/bitebi/utils"
 )
 
 type Block struct {
@@ -12,6 +14,41 @@ type Block struct {
 	time                       uint32
 	nBits                      uint32
 	nonce                      uint32
+}
+
+func (b *Block) PutBuffer(writer utils.BufWriter) (err error) {
+	err = writer.WriteInt32(b.version)
+	if err != nil {
+		return
+	}
+	err = writer.Write32Bytes(b.previous_block_header_hash)
+	if err != nil {
+		return
+	}
+	err = writer.Write32Bytes(b.merkle_root_hash)
+	if err != nil {
+		return
+	}
+	err = writer.WriteUint32(b.time)
+	if err != nil {
+		return
+	}
+	err = writer.WriteUint32(b.nBits)
+	if err != nil {
+		return
+	}
+	err = writer.WriteUint32(b.nonce)
+	return
+}
+
+func (b *Block) GetHash() (hash [32]byte, err error) {
+	writer := utils.NewBufWriter()
+	err = b.PutBuffer(writer)
+	if err != nil {
+		return
+	}
+	hash = utils.Sha256Twice(writer.Collect())
+	return
 }
 
 func WriteBlock(previous_block_header_hash [32]byte, TS []Transaction, nonce uint32) Block {
