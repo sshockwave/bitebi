@@ -1,19 +1,34 @@
 package message
 
+import (
+	"crypto/sha256"
+	"github.com/sshockwave/bitebi/utils"
+)
+
 type Transaction struct {
-	version   int32
-	tx_in     txIn
-	tx_out    txOut
-	lock_time uint32
+	version      int32
+	tx_in_count  uint64
+	tx_in        txIn
+	tx_out_count uint64
+	tx_out       txOut
+	lock_time    uint32
 }
 
-func hashTransaction(ts Transaction) [32]byte {
-
+func CreateTransaction(version int32, tx_in_count uint64, tx_in txIn, tx_out_count uint64, tx_out txOut, lock_time uint32) Transaction {
+	var ts Transaction
+	ts.version = version
+	ts.tx_in_count = tx_in_count
+	ts.tx_in = tx_in
+	ts.tx_out_count = tx_out_count
+	ts.tx_out = tx_out
+	ts.lock_time = lock_time
+	return ts
 }
 
 func makeMerkleTree(TS []Transaction) [32]byte {
 	if len(TS) == 1 {
-		return hashTransaction(TS[0])
+		hash, _ := utils.GetHash(&TS[0])
+		return hash
 	} else {
 		var m int
 		m = len(TS) / 2
@@ -26,8 +41,8 @@ func makeMerkleTree(TS []Transaction) [32]byte {
 			src[i] = hash1[i]
 			src[32+i] = hash2[i]
 		}
-		res := hash(src[:])
-		res = hash(res[:])
+		res := sha256.Sum256(src[:])
+		res = sha256.Sum256(res[:])
 		return res
 	}
 }
