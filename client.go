@@ -8,10 +8,10 @@ import (
 
 type CmdApp struct {
 	isTerminal bool
-	scanner *bufio.Scanner
+	scanner    *bufio.Scanner
 	blockchain BlockChain
-	peer Peer
-	name string
+	peer       Peer
+	name       string
 }
 
 func NewCmdApp() (app CmdApp) {
@@ -34,8 +34,10 @@ func (c *CmdApp) Serve() {
 		switch c.scanner.Text() {
 		case "mine":
 			// create a goroutine that mines
+			go c.blockchain.mine(0, c.blockchain.mempool, 1, c.peer)
 		case "stopmining":
 			// stop all mining processes
+			c.blockchain.mining = false
 		case "peer": // sk
 			// add an address of a peer
 		case "createtx":
@@ -50,7 +52,6 @@ func (c *CmdApp) Serve() {
 		fmt.Println("[ERROR] During scanning, an error occurred: " + c.scanner.Err().Error())
 	}
 }
-
 
 func main() {
 	app := NewCmdApp()
