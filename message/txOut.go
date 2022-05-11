@@ -6,7 +6,7 @@ import (
 
 type txOut struct {
 	value     int64
-	pk_script string
+	pk_script []byte
 }
 
 func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
@@ -14,6 +14,6 @@ func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
 	if err != nil {
 		return err
 	}
-	err = writer.WriteBytes([]byte(t.pk_script))
+	err = writer.WriteBytes(t.pk_script)
 	return
 }
