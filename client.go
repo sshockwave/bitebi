@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+
+	"github.com/sshockwave/bitebi/utils"
 )
 
 type CmdApp struct {
@@ -18,8 +20,7 @@ func NewCmdApp() (app CmdApp) {
 	o, _ := os.Stdout.Stat()
 	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
 	app.scanner = bufio.NewScanner(os.Stdin)
-	// TODO name: random name
-	// TODO init peer
+	app.name = utils.RandomName()
 	return
 }
 
@@ -53,6 +54,7 @@ func (c *CmdApp) Serve() {
 
 
 func main() {
+	utils.RandomInit()
 	app := NewCmdApp()
 	app.Serve()
 }
