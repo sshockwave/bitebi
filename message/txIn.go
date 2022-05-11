@@ -28,7 +28,13 @@ func (t *txIn) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func makeSlice(tx txIn) struct {
+func NewtxIn(previous_output outpoint, script_bytes uint64, signature_script []byte, sequence uint32) txIn {
+	var ti txIn
+	ti.previous_output = previous_output
+	ti.script_bytes = script_bytes
+	ti.signature_script = signature_script
+	ti.sequence = sequence
+	return ti
 }
 
 type outpoint struct {
@@ -43,4 +49,11 @@ func (o *outpoint) PutBuffer(writer utils.BufWriter) (err error) {
 	}
 	err = writer.WriteUint32(o.index)
 	return
+}
+
+func Newoutpoint(hash [32]byte, index uint32) outpoint {
+	var op outpoint
+	op.hash = hash
+	op.index = index
+	return op
 }
