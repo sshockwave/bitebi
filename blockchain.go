@@ -1,19 +1,21 @@
 package main
 
 import (
-	"github.com/sshockwave/bitebi/message"
 	"sync"
+
+	"github.com/sshockwave/bitebi/message"
+	"github.com/sshockwave/bitebi/utils"
 )
 
 type BlockChain struct {
 	// All blocks
-	block []message.Block
-	mutex sync.Mutex
+	Block []message.Block
+	Mtx sync.Mutex
 	// All known transactions
-	tx map[[32]byte]message.Transaction
+	TX map[[32]byte]message.Transaction
 	// The transactions that have not been added to a block
-	mempool map[[32]byte]message.Transaction
-	mining  bool
+	Mempool map[[32]byte]message.Transaction
+	Mining  bool
 }
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
@@ -22,14 +24,14 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 	out_count := tx.Tx_out_count
 	tx_out := tx.Tx_out
 
-	wallet := int(0)
+	wallet := int64(0)
 	for i := 0; i < int(in_count); i++ {
-		ID := tx_in[i].Previous_output.hash
-		index := tx_in[i].Previous_output.index
-		wallet += b.tx[ID].tx_out[index].value // tx[ID] or mempool[ID]
+		ID := tx_in[i].Previous_output.Hash
+		index := tx_in[i].Previous_output.Index
+		wallet += b.TX[ID].Tx_out[index].Value // tx[ID] or mempool[ID]
 	}
-	for i := 0; i < out_count; i++ {
-		wallet -= tx_out[i].value
+	for i := uint64(0); i < out_count; i++ {
+		wallet -= tx_out[i].Value
 	}
 
 	if wallet < 0 {
@@ -41,9 +43,9 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 
 func (b *BlockChain) addTransaction(tx message.Transaction) {
 	// TODO add to transaction
-	b.mining = false
-	txID := message.GetHash(tx)
-	b.mempool[txID] = tx
+	b.Mining = false
+	txID, _ := utils.GetHash(&tx)
+	b.Mempool[txID] = tx
 }
 
 /*func (b *BlockChain) verifyBlock(block Block, TS []Transaction) bool {
@@ -55,21 +57,20 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 func (b *BlockChain) addBlock(starPos int, newBlocks []message.Block) {
 	// TODO
 	// len(b.block) < starPos + len(newBlocks)
-	b.mtx.Lock()
+	b.Mtx.Lock()
 
-	b.mtx.Unlock()
+	b.Mtx.Unlock()
 }
 
-func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits int32, peer Peer) {
-	b.mining = true
-	previous_block_header_hash := b.block[len(b.block)-1].previous_block_header_hash
+func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits uint32, peer Peer) {
+	b.Mining = true
+	previous_block_header_hash := b.Block[len(b.Block)-1].Previous_block_header_hash
 	nonce := uint32(0)
-	var block message.Block
-	for b.mining {
+	for b.Mining {
 		block, err := message.CreateBlock(version, previous_block_header_hash, TS, nBits, nonce)
 		if err == nil {
-			newBlock := []message.Block(block)
-			b.addBlock(len(b.block), newBlock)
+			newBlock := []message.Block{block}
+			b.addBlock(len(b.Block), newBlock)
 
 			peer.broadcastBlock()
 			break

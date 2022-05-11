@@ -5,14 +5,14 @@ import (
 )
 
 type txIn struct {
-	previous_output  outpoint
+	Previous_output  outpoint
 	script_bytes     uint64
 	signature_script []byte
 	sequence         uint32
 }
 
 func (t *txIn) PutBuffer(writer utils.BufWriter) (err error) {
-	err = t.previous_output.PutBuffer(writer)
+	err = t.Previous_output.PutBuffer(writer)
 	if err != nil {
 		return
 	}
@@ -30,7 +30,7 @@ func (t *txIn) PutBuffer(writer utils.BufWriter) (err error) {
 
 func NewtxIn(previous_output outpoint, script_bytes uint64, signature_script []byte, sequence uint32) txIn {
 	var ti txIn
-	ti.previous_output = previous_output
+	ti.Previous_output = previous_output
 	ti.script_bytes = script_bytes
 	ti.signature_script = signature_script
 	ti.sequence = sequence
@@ -38,22 +38,22 @@ func NewtxIn(previous_output outpoint, script_bytes uint64, signature_script []b
 }
 
 type outpoint struct {
-	hash  [32]byte
-	index uint32
+	Hash  [32]byte
+	Index uint32
 }
 
 func (o *outpoint) PutBuffer(writer utils.BufWriter) (err error) {
-	err = writer.Write32Bytes(o.hash)
+	err = writer.Write32Bytes(o.Hash)
 	if err != nil {
 		return
 	}
-	err = writer.WriteUint32(o.index)
+	err = writer.WriteUint32(o.Index)
 	return
 }
 
 func Newoutpoint(hash [32]byte, index uint32) outpoint {
 	var op outpoint
-	op.hash = hash
-	op.index = index
+	op.Hash = hash
+	op.Index = index
 	return op
 }

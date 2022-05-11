@@ -37,10 +37,10 @@ func (c *CmdApp) Serve() {
 		switch c.scanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, c.blockchain.mempool, 1, c.peer)
+			go c.blockchain.mine(0, c.blockchain.Mempool, 1, c.peer)
 		case "stopmining":
 			// stop all mining processes
-			c.blockchain.mining = false
+			c.blockchain.Mining = false
 		case "peer": // sk
 			// add an address of a peer
 		case "createtx":
