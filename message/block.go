@@ -41,16 +41,6 @@ func (b *Block) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func (b *Block) GetHash() (hash [32]byte, err error) {
-	writer := utils.NewBufWriter()
-	err = b.PutBuffer(writer)
-	if err != nil {
-		return
-	}
-	hash = utils.Sha256Twice(writer.Collect())
-	return
-}
-
 func WriteBlock(previous_block_header_hash [32]byte, TS []Transaction, nonce uint32) Block {
 	var block Block
 	block.previous_block_header_hash = previous_block_header_hash
