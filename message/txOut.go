@@ -5,8 +5,15 @@ import (
 )
 
 type txOut struct {
-	value     int64
-	pk_script []byte
+	value           int64
+	pk_script_bytes []byte
+}
+
+func NewtxOut(value int64, pk_script_bytes string) txOut {
+	var to txOut
+	to.value = value
+	to.pk_script_bytes = []byte(pk_script_bytes)
+	return to
 }
 
 func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
@@ -14,6 +21,6 @@ func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
 	if err != nil {
 		return err
 	}
-	err = writer.WriteBytes(t.pk_script)
+	err = writer.WriteBytes(t.pk_script_bytes)
 	return
 }
