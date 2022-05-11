@@ -1,5 +1,7 @@
 package message
 
+import "github.com/sshockwave/bitebi/utils"
+
 type Transaction struct {
 	version   int32
 	tx_in     txIn
@@ -7,13 +9,27 @@ type Transaction struct {
 	lock_time uint32
 }
 
-func hashTransaction(ts Transaction) [32]byte {
-
+func (t *Transaction) PutBuffer(writer utils.BufWriter) (err error) {
+	err = writer.WriteInt32(t.version)
+	if err != nil {
+		return
+	}
+	err = t.tx_in.PutBuffer(writer)
+	if err != nil {
+		return
+	}
+	err = t.tx_out.PutBuffer(writer)
+	if err != nil {
+		return
+	}
+	err = writer.WriteUint32(t.lock_time)
+	return
 }
 
 func makeMerkleTree(TS []Transaction) [32]byte {
 	if len(TS) == 1 {
-		return hashTransaction(TS[0])
+		hash, _ := utils.GetHash(&TS[0])
+		return hash
 	} else {
 		var m int
 		m = len(TS) / 2
