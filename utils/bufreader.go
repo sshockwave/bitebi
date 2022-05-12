@@ -20,6 +20,11 @@ func (b *BufReader) ReadBytes(n int) (data []byte, err error){
     return data, err
 }
 
+func (b *BufReader) Read16Bytes() (data [16]byte, err error) {
+    _, err = io.ReadFull(b.src, data[:])
+    return
+}
+
 func (b *BufReader) Read32Bytes() (data [32]byte, err error) {
     _, err = io.ReadFull(b.src, data[:])
     return

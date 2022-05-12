@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -46,6 +47,19 @@ func (c *CmdApp) Serve() {
 			c.blockchain.Mining = false
 		case "peer": // sk
 			// add an address of a peer
+			if !c.scanner.Scan() {
+				break
+			}
+			addr := c.scanner.Text()
+			conn, err := net.Dial("tcp", addr)
+			if err != nil {
+				log.Println("[ERROR] Dialing address " + addr + " failed")
+			} else {
+				var new_c PeerConnection
+				new_c.Conn = conn
+				new_c.peer = &c.peer
+				go new_c.Serve()
+			}
 		case "createtx":
 			// input extra
 		case "showbalance":

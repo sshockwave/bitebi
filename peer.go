@@ -31,6 +31,9 @@ func (c *PeerConnection) Serve() {
 	c.peer.lock.Lock()
 	c.peer.conns[c] = void_null
 	c.peer.lock.Unlock()
+	// TODO: version message
+	c.sendMessage("getaddr", []byte{})
+	c.doBlockSync()
 	for {
 		command, payload, err := c.readMessage()
 		if err != nil {
@@ -86,9 +89,11 @@ func (p *Peer) BroadcastTransaction(tx message.Transaction) (err error) {
 		log.Printf("[ERROR] Serializing tx: " + err.Error())
 		return
 	}
+	p.lock.RLock()
 	for c := range p.conns {
 		c.sendMessage("tx", b)
 	}
+	p.lock.RUnlock()
 	return
 }
 
@@ -99,9 +104,11 @@ func (p *Peer) BroadcastBlock(blk message.SerializedBlock) (err error) {
 		log.Printf("[ERROR] Serializing tx: " + err.Error())
 		return
 	}
+	p.lock.RLock()
 	for c := range p.conns {
-		c.sendMessage("tx", b)
+		c.sendMessage("block", b)
 	}
+	p.lock.RUnlock()
 	return
 }
 
@@ -180,7 +187,9 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "pong":
 		// Not yet in plan
 	case "getaddr":
+		c.onGetAddr(payload)
 	case "addr":
+		c.peer.onAddr(payload)
 	case "addrv2":
 		// Not yet in plan
 	case "filterload":
@@ -451,5 +460,85 @@ func (c *PeerConnection) doBlockSync() (err error) {
 		return
 	}
 	err = c.sendMessage("getblocks", data)
+	return
+}
+
+var unexpectedPayload = errors.New("unexpectedPayload")
+func (c *PeerConnection) onGetAddr(payload []byte) (err error) {
+	if len(payload) > 0 {
+		return unexpectedPayload
+	}
+	c.peer.lock.RLock()
+	arr := make([]message.NetworkIPAddress, len(c.peer.conns))
+	for c := range c.peer.conns {
+		addr, ok := c.Conn.RemoteAddr().(*net.TCPAddr)
+		if !ok {
+			log.Fatal("[FATAL] Should have used TCP connections")
+		}
+		var ipaddr message.NetworkIPAddress
+		copy(ipaddr.Ipv6[:], addr.IP.To16())
+		arr = append(arr, ipaddr)
+	}
+	c.peer.lock.RUnlock()
+	addrmsg := message.AddrMsg{Addrs: arr}
+	var raw_data []byte
+	raw_data, err = utils.GetBytes(&addrmsg)
+	if err != nil {
+		return
+	}
+	err = c.sendMessage("addr", raw_data)
+	return
+}
+
+func (p *Peer) onAddr(data []byte) (err error) {
+	reader := utils.NewBufReader(bytes.NewBuffer(data))
+	var msg message.AddrMsg
+	err = msg.LoadBuffer(reader)
+	if err != nil {
+		return
+	}
+	filtered := make([]message.NetworkIPAddress, 0)
+	p.lock.RLock()
+	for _, v := range msg.Addrs {
+		// check if we are already connected
+		found := false
+		for c := range p.conns {
+			addr, ok := c.Conn.RemoteAddr().(*net.TCPAddr)
+			if !ok {
+				log.Fatal("[FATAL] Should have used TCP connections")
+			}
+			if bytes.Compare(v.Ipv6[:], addr.IP.To16()) == 0 && v.Port == uint16(addr.Port) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			filtered = append(filtered, v)
+			go func(addr net.TCPAddr) {
+				conn, err := net.DialTCP("tcp", nil, &addr)
+				if err != nil {
+					log.Printf("[WARNING] Connection to " + addr.String() + " failed.")
+					return
+				}
+				var new_c PeerConnection
+				new_c.Conn = conn
+				new_c.peer = p
+				new_c.Serve()
+			}(net.TCPAddr{IP: v.Ipv6[:], Port: int(v.Port)})
+		}
+	}
+	if len(filtered) > 0 {
+		addrmsg := message.AddrMsg{Addrs: filtered}
+		var raw_data []byte
+		raw_data, err = utils.GetBytes(&addrmsg)
+		if err != nil {
+			return
+		}
+		for c := range p.conns {
+			c.sendMessage("addr", raw_data)
+			// err is ignored
+		}
+	}
+	p.lock.RUnlock()
 	return
 }
