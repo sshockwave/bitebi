@@ -226,11 +226,11 @@ func (c *PeerConnection) onMempool(data []byte) (err error) {
 			cur_pt := make([]message.Inventory, 0)
 			inv = append(inv, cur_pt)
 		}
-		cur_pt = append(cur_pt, message.Inventory{message.MSG_TX, k})
+		cur_pt = append(cur_pt, message.Inventory{Type: message.MSG_TX, Hash: k})
 	}
 	c.peer.Chain.Mtx.Unlock()
 	for _, v := range inv {
-		msg := message.InvMsg{v}
+		msg := message.InvMsg{Inv: v}
 		data, _ = utils.GetBytes(&msg)
 		err = c.sendMessage("inv", data)
 		if err != nil {
@@ -263,13 +263,13 @@ func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
 		if c.peer.Chain.Block[i].HeaderHash == msg.StopHash {
 			break
 		}
-		inv = append(inv, message.Inventory{message.MSG_BLOCK, c.peer.Chain.Block[i].HeaderHash})
+		inv = append(inv, message.Inventory{Type: message.MSG_BLOCK, Hash: c.peer.Chain.Block[i].HeaderHash})
 		cnt += 1
 		if cnt == message.InvMaxItemCount {
 			break
 		}
 	}
-	invmsg := message.InvMsg{inv}
+	invmsg := message.InvMsg{Inv: inv}
 	invbytes, err := utils.GetBytes(&invmsg)
 	if err != nil {
 		return
@@ -284,7 +284,7 @@ func (c *PeerConnection) onInv(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	retmsg := message.InvMsg{make([]message.Inventory, 0)}
+	retmsg := message.InvMsg{Inv: make([]message.Inventory, 0)}
 	c.peer.lock.RLock()
 	c.peer.Chain.Mtx.Lock()
 	for _, v := range invmsg.Inv {
