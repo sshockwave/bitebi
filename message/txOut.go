@@ -21,6 +21,24 @@ func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
 	if err != nil {
 		return err
 	}
+	err = writer.WriteCompactUint(uint64(len(t.Pk_script)))
+	if err != nil {
+		return err
+	}
 	err = writer.WriteBytes(t.Pk_script)
+	return
+}
+
+func (t *txOut) LoadBuffer(reader utils.BufReader) (err error) {
+	t.Value, err = reader.ReadInt64()
+	if err != nil {
+		return err
+	}
+	var byte_cnt uint64
+	byte_cnt, err = reader.ReadCompactUint()
+	if err != nil {
+		return err
+	}
+	t.Pk_script, err = reader.ReadBytes(int(byte_cnt))
 	return
 }

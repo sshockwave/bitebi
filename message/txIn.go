@@ -57,3 +57,29 @@ func Newoutpoint(hash [32]byte, index uint32) outpoint {
 	op.Index = index
 	return op
 }
+
+func (data *txIn) LoadBuffer(reader utils.BufReader) (err error) {
+	err = data.Previous_output.LoadBuffer(reader)
+	if err != nil {
+		return
+	}
+	data.script_bytes, err = reader.ReadUint64()
+	if err != nil {
+		return
+	}
+	data.signature_script, err = reader.ReadBytes(int(data.script_bytes))
+	if err != nil {
+		return
+	}
+	data.sequence, err = reader.ReadUint32()
+	return
+}
+
+func (o *outpoint) LoadBuffer(reader utils.BufReader) (err error) {
+	o.Hash, err = reader.Read32Bytes()
+	if err != nil {
+		return
+	}
+	o.Index, err = reader.ReadUint32()
+	return
+}

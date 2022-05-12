@@ -64,3 +64,27 @@ func makeMerkleTree(TS []Transaction) [32]byte {
 		return res
 	}
 }
+
+func (tx *Transaction) LoadBuffer(reader utils.BufReader) (err error) {
+	tx.Version, err = reader.ReadInt32()
+	if err != nil {
+		return
+	}
+	tx.Tx_in_count, err = reader.ReadCompactUint()
+	tx.Tx_in = make([]txIn, tx.Tx_in_count)
+	for i := uint64(0); i < tx.Tx_in_count; i++ {
+		err = tx.Tx_in[i].LoadBuffer(reader)
+		if err != nil {
+			return
+		}
+	}
+	tx.Tx_out_count, err = reader.ReadCompactUint()
+	tx.Tx_out = make([]txOut, tx.Tx_out_count)
+	for i := uint64(0); i < tx.Tx_out_count; i++ {
+		err = tx.Tx_out[i].LoadBuffer(reader)
+		if err != nil {
+			return
+		}
+	}
+	return
+}

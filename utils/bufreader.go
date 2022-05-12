@@ -1,9 +1,9 @@
 package utils
 
 import (
-    "io"
-    "encoding/binary"
-    "errors"
+	"encoding/binary"
+	"errors"
+	"io"
 )
 
 type BufReader struct {
@@ -55,6 +55,16 @@ func (b *BufReader) ReadUint64() (data uint64, err error) {
         return 0, err
     }
     return binary.LittleEndian.Uint64(d), nil
+}
+
+func (b *BufReader) ReadInt32() (data int32, err error) {
+    err = binary.Read(b.src, binary.LittleEndian, &data)
+    return 
+}
+
+func (b *BufReader) ReadInt64() (data int64, err error) {
+    err = binary.Read(b.src, binary.LittleEndian, &data)
+    return 
 }
 
 var CompactUintError = errors.New("CompactUintError")

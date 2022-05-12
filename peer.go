@@ -321,3 +321,14 @@ func (c *PeerConnection) onInv(data []byte) (err error) {
 	}
 	return
 }
+
+func (c *PeerConnection) onTx(data []byte) (err error) {
+	reader := utils.NewBufReader(bytes.NewBuffer(data))
+	var tx message.Transaction
+	err = tx.LoadBuffer(reader)
+	if err != nil {
+		return
+	}
+	var flag bool
+	var hash [32]byte
+	hash, err = utils.GetHash(&tx)
