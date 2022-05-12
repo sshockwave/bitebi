@@ -138,7 +138,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	return
 }
 
-func (b *BlockChain) mine(version int32, nBits uint32, peer Peer) {
+func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer) {
 	b.Mining = true
 	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
 
