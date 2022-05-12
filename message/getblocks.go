@@ -1,9 +1,10 @@
 package message
 
 import (
-    "io"
-    "errors"
-    "github.com/sshockwave/bitebi/utils"
+	"errors"
+	"io"
+
+	"github.com/sshockwave/bitebi/utils"
 )
 
 // https://developer.bitcoin.org/reference/p2p_networking.html#getblocks
@@ -40,5 +41,24 @@ func NewGetBlocksMsg(_reader io.Reader) (ret GetBlocksMsg, err error) {
         }
     }
     ret.StopHash, err = reader.Read32Bytes()
+    return
+}
+
+func (b *GetBlocksMsg) PutBuffer(writer utils.BufWriter) (err error) {
+    err = writer.WriteUint32(b.Version)
+    if err != nil {
+        return
+    }
+    err = writer.WriteCompactUint(uint64(len(b.BlockHeaderHashes)))
+    if err != nil {
+        return
+    }
+    for _, v := range b.BlockHeaderHashes {
+        err = writer.Write32Bytes(v)
+        if err != nil {
+            return
+        }
+    }
+    err = writer.Write32Bytes(b.StopHash)
     return
 }

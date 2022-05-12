@@ -166,7 +166,7 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "tx":
 		c.onTx(payload)
 	case "block":
-		// SerializedBlock
+		c.onBlock(payload)
 	case "merkleblock":
 		// Not yet in plan
 	case "notfound":
@@ -395,5 +395,61 @@ func (c *PeerConnection) onGetData(data []byte) (err error) {
 			}
 		}
 	}
+	return
+}
+
+var BlockTTL uint64 = 600 // seconds
+func (c *PeerConnection) onBlock(data []byte) (err error) {
+	var blk message.SerializedBlock
+	reader := utils.NewBufReader(bytes.NewBuffer(data))
+	err = blk.LoadBuffer(reader)
+	if err != nil {
+		return
+	}
+	c.peer.orphans.AddBlock(&blk)
+	go c.peer.orphans.RemoveBlock(blk.HeaderHash, BlockTTL)
+	chain := c.peer.orphans.GetLongestChain(blk.HeaderHash)
+	if len(chain) > 0 {
+		c.peer.Chain.Mtx.Lock()
+		hei, ok := c.peer.Chain.Height[chain[0].Header.Previous_block_header_hash]
+		if ok {
+			// not orphaned, check if longer than current chain
+			ok = hei + len(chain) > len(c.peer.Chain.Block)
+		}
+		c.peer.Chain.Mtx.Unlock()
+		if ok {
+			chain2 := make([]message.SerializedBlock, len(chain))
+			for i, v := range chain {
+				chain2[i] = *v
+			}
+			ok = c.peer.Chain.addBlock(hei + 1, chain2)
+		}
+		if ok {
+			for _, v := range chain {
+				c.peer.orphans.RemoveBlock(v.HeaderHash, 0)
+			}
+		} else {
+		}
+	} else {
+		err = c.doBlockSync()
+	}
+	return
+}
+
+func (c *PeerConnection) doBlockSync() (err error) {
+	var msg message.GetBlocksMsg
+	arr := make([][32]byte, 0)
+	c.peer.Chain.Mtx.Lock()
+	for i, j := len(c.peer.Chain.Block) - 1,  1; i > 0; i, j = i - j, j * 2 {
+		arr = append(arr, c.peer.Chain.Block[i].HeaderHash)
+	}
+	c.peer.Chain.Mtx.Unlock()
+	msg.BlockHeaderHashes = arr
+	var data []byte
+	data, err = utils.GetBytes(&msg)
+	if err != nil {
+		return
+	}
+	err = c.sendMessage("getblocks", data)
 	return
 }

@@ -92,13 +92,13 @@ func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) b
 	return true
 }
 
-func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock) {
-	// TODO
+func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock) (accepted bool) {
 	// len(b.block) < starPos + len(newBlocks)
 	b.Mtx.Lock()
 	chainLength := len(b.Block)
 	newChainLength := startPos - 1 + len(newBlocks)
 	if chainLength < newChainLength && chainLength >= startPos {
+		accepted = true
 		var staleTransactions []message.Transaction // stale transactions
 		for i := startPos; i <= chainLength-1; i++ {
 			transactions := b.Block[i].Txns
@@ -135,6 +135,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 		}
 	}
 	b.Mtx.Unlock()
+	return
 }
 
 func (b *BlockChain) mine(version int32, nBits uint32, peer Peer) {

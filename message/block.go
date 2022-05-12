@@ -41,6 +41,34 @@ func (b *Block) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
+func (b *Block) LoadBuffer(reader utils.BufReader) (err error) {
+	b.Version, err = reader.ReadInt32()
+	if err != nil {
+		return
+	}
+	b.Previous_block_header_hash, err = reader.Read32Bytes()
+	if err != nil {
+		return
+	}
+	b.Merkle_root_hash, err = reader.Read32Bytes()
+	if err != nil {
+		return
+	}
+	b.Time, err = reader.ReadUint32()
+	if err != nil {
+		return
+	}
+	b.NBits, err = reader.ReadUint32()
+	if err != nil {
+		return
+	}
+	b.Nonce, err = reader.ReadUint32()
+	if err != nil {
+		return
+	}
+	return
+}
+
 var blockHashNotValid = errors.New("blockHashNotValid")
 
 func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transaction, nBits uint32, nonce uint32) (Block, error) {
@@ -96,5 +124,23 @@ func CreateSerialBlock(block Block, tx []Transaction) (sb SerializedBlock, err e
 	sb.Header = block
 	sb.Txns = tx
 	sb.HeaderHash, err = utils.GetHash(&block)
+	return
+}
+
+func (b *SerializedBlock) LoadBuffer(reader utils.BufReader) (err error) {
+	err = b.Header.LoadBuffer(reader)
+	if err != nil {
+		return
+	}
+	b.HeaderHash, err = utils.GetHash(&b.Header)
+	var cnt uint64
+	cnt, err = reader.ReadCompactUint()
+	if err != nil {
+		return
+	}
+	b.Txns = make([]Transaction, cnt)
+	for i := uint64(0); i < cnt; i++ {
+		err = b.Txns[i].LoadBuffer(reader)
+	}
 	return
 }
