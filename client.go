@@ -3,7 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
@@ -49,7 +52,7 @@ func (c *CmdApp) Serve() {
 			// display the balance of an account
 		case "serve":
 			if c.hasPeer {
-				fmt.Println("A server is already running!")
+				log.Println("[ERROR] A server is already running!")
 			} else {
 				var err error
 				c.peer, err = NewPeer(&c.blockchain, p2p.GetMainnet(), "0.0.0.0", -1)
@@ -59,10 +62,19 @@ func (c *CmdApp) Serve() {
 					c.hasPeer = true
 				}
 			}
+		case "sleep":
+			if !c.scanner.Scan() {
+				break
+			}
+			t, err := strconv.Atoi(c.scanner.Text())
+			if err != nil {
+				log.Println("[ERROR] Time parsing error: " + err.Error())
+			}
+			time.Sleep(time.Duration(t) * time.Second)
 		}
 	}
 	if c.scanner.Err() != nil {
-		fmt.Println("[ERROR] During scanning, an error occurred: " + c.scanner.Err().Error())
+		log.Println("[ERROR] During scanning, an error occurred: " + c.scanner.Err().Error())
 	}
 }
 
