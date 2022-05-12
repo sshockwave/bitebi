@@ -162,6 +162,7 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 		c.onInv(payload)
 	case "getdata":
 	case "tx":
+		c.onTx(payload)
 	case "block":
 		// SerializedBlock
 	case "merkleblock":
@@ -332,3 +333,15 @@ func (c *PeerConnection) onTx(data []byte) (err error) {
 	var flag bool
 	var hash [32]byte
 	hash, err = utils.GetHash(&tx)
+	if err != nil {
+		return err
+	}
+	c.peer.Chain.Mtx.Lock()
+	_, flag = c.peer.Chain.TX[hash]
+	c.peer.Chain.Mtx.Unlock()
+	if !flag {
+		c.peer.Chain.addTransaction(tx)
+		err = c.peer.BroadcastTransaction(tx)
+	}
+	return
+}
