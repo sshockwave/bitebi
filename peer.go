@@ -8,28 +8,38 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
 )
 
+type void struct{}
+var void_null void
+
 type Peer struct {
 	Chain *BlockChain
 	Config p2p.NetConfig
 	ln net.Listener
-	out_channels []net.Conn
+	conns map[*PeerConnection]void
+	lock sync.RWMutex
 }
 
-func (p *Peer) handleConnection(conn net.Conn) {
-	p.out_channels = append(p.out_channels, conn)
+func (c *PeerConnection) Serve() {
+	c.peer.lock.Lock()
+	c.peer.conns[c] = void_null
+	c.peer.lock.Unlock()
 	for {
-		err := p.readMessage(conn)
+		err := c.readMessage()
 		if err != nil {
 			log.Println("[ERROR] " + err.Error())
 			break
 		}
 	}
-	conn.Close()
+	c.peer.lock.Lock()
+	delete(c.peer.conns, c)
+	c.peer.lock.Unlock()
+	c.Conn.Close()
 }
 
 func (p *Peer) messageLoop() {
@@ -40,7 +50,10 @@ func (p *Peer) messageLoop() {
 			// handle error
 			break
 		}
-		go p.handleConnection(conn)
+		c := new(PeerConnection)
+		c.Conn = conn
+		c.peer = p
+		go c.Serve()
 	}
 }
 
@@ -65,10 +78,14 @@ func (p *Peer) BroadcastTransaction() {
 func (p *Peer) BroadcastBlock() {
 }
 
+type PeerConnection struct {
+	Conn net.Conn
+	peer *Peer
+}
 
-func (p *Peer) readMessage(conn net.Conn) (err error) {
+func (c *PeerConnection) readMessage() (err error) {
 	header := make([]byte, 4 + 12 + 4 + 4)
-	_, err = io.ReadFull(conn, header)
+	_, err = io.ReadFull(c.Conn, header)
 	if err != nil {
 		if err == io.EOF {
 			return
@@ -76,20 +93,20 @@ func (p *Peer) readMessage(conn net.Conn) (err error) {
 		log.Println("[ERROR] Error returned when reading header")
 		return
 	}
-	if bytes.Compare(p.Config.StartString[:], header[0:4]) != 0 {
+	if bytes.Compare(c.peer.Config.StartString[:], header[0:4]) != 0 {
 		log.Println("[ERROR] Invalid start string, discarding")
 		err = errors.New("invalidStartString")
 		return
 	}
 	command := string(bytes.TrimRight(header[4:16], "\x00"))
 	payload_size := binary.LittleEndian.Uint32(header[16:20])
-	if payload_size > p.Config.MaxNBits {
+	if payload_size > c.peer.Config.MaxNBits {
 		log.Println("[ERROR] Payload too large")
 		err = errors.New("payloadTooLarge")
 		return
 	}
 	payload := make([]byte, payload_size)
-	_, err = io.ReadFull(conn, payload)
+	_, err = io.ReadFull(c.Conn, payload)
 	if err != nil {
 		log.Println("[ERROR] Error occurred while reading payload")
 		return
