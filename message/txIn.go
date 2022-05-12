@@ -5,7 +5,7 @@ import (
 )
 
 type txIn struct {
-	Previous_output  outpoint
+	Previous_output  Outpoint
 	script_bytes     uint64
 	signature_script []byte
 	sequence         uint32
@@ -28,7 +28,7 @@ func (t *txIn) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func NewtxIn(previous_output outpoint, script_bytes uint64, signature_script []byte, sequence uint32) txIn {
+func NewtxIn(previous_output Outpoint, script_bytes uint64, signature_script []byte, sequence uint32) txIn {
 	var ti txIn
 	ti.Previous_output = previous_output
 	ti.script_bytes = script_bytes
@@ -37,12 +37,12 @@ func NewtxIn(previous_output outpoint, script_bytes uint64, signature_script []b
 	return ti
 }
 
-type outpoint struct {
+type Outpoint struct {
 	Hash  [32]byte
 	Index uint32
 }
 
-func (o *outpoint) PutBuffer(writer utils.BufWriter) (err error) {
+func (o *Outpoint) PutBuffer(writer utils.BufWriter) (err error) {
 	err = writer.Write32Bytes(o.Hash)
 	if err != nil {
 		return
@@ -51,8 +51,8 @@ func (o *outpoint) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func Newoutpoint(hash [32]byte, index uint32) outpoint {
-	var op outpoint
+func NewOutPoint(hash [32]byte, index uint32) Outpoint {
+	var op Outpoint
 	op.Hash = hash
 	op.Index = index
 	return op
@@ -75,7 +75,7 @@ func (data *txIn) LoadBuffer(reader utils.BufReader) (err error) {
 	return
 }
 
-func (o *outpoint) LoadBuffer(reader utils.BufReader) (err error) {
+func (o *Outpoint) LoadBuffer(reader utils.BufReader) (err error) {
 	o.Hash, err = reader.Read32Bytes()
 	if err != nil {
 		return
