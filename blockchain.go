@@ -16,6 +16,10 @@ type BlockChain struct {
 	// The transactions that have not been added to a block
 	Mempool map[[32]byte]message.Transaction
 	Mining  bool
+	// The height of blocks
+	// used to examine the existence of a block
+	// TODO: maintain this information
+	Height map[[32]byte]int
 }
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {

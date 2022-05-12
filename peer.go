@@ -234,19 +234,15 @@ func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
 	}
 	// ignoring msg.Version
 	var commonHeight int
+	c.peer.Chain.Mtx.Lock()
 	for _, hash := range msg.BlockHeaderHashes {
-		c.peer.Chain.Mtx.Lock()
-		for j := len(c.peer.Chain.Block) - 1; j >= 0; j-- {
-			if c.peer.Chain.Block[j].HeaderHash == hash {
-				commonHeight = j
-				break
-			}
-		}
-		c.peer.Chain.Mtx.Unlock()
-		if commonHeight > 0 {
+		if h, ok := c.peer.Chain.Height[hash]; ok {
+			commonHeight = h
+			c.peer.Chain.Mtx.Unlock()
 			break
 		}
 	}
+	c.peer.Chain.Mtx.Unlock()
 	inv := make([]message.Inventory, 0)
 	cnt := 0
 	for i := commonHeight + 1; i < len(c.peer.Chain.Block); i++ {
