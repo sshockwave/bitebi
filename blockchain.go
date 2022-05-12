@@ -20,6 +20,7 @@ type BlockChain struct {
 	// used to examine the existence of a block
 	// TODO: maintain this information
 	Height map[[32]byte]int
+	UTXO   map[message.Outpoint]bool
 }
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
@@ -29,7 +30,7 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 	out_count := tx.Tx_out_count
 	tx_out := tx.Tx_out
 
-	wallet := int64(0)
+	wallet := int64(0) // wallet varification
 	for i := 0; i < int(in_count); i++ {
 		ID := tx_in[i].Previous_output.Hash
 		index := tx_in[i].Previous_output.Index
@@ -38,9 +39,15 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 	for i := uint64(0); i < out_count; i++ {
 		wallet -= tx_out[i].Value
 	}
-
 	if wallet < 0 {
 		return false
+	}
+
+	for i := 0; i < len(tx_in); i++ { // input verification
+		_, ok := b.UTXO[tx_in[i].Previous_output]
+		if !ok {
+			return false
+		}
 	}
 
 	return true
@@ -51,6 +58,15 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 	b.Mining = false
 	txID, _ := utils.GetHash(&tx)
 	b.Mempool[txID] = tx
+
+	for i := uint64(0); i < tx.Tx_in_count; i++ {
+		delete(b.UTXO, tx.Tx_in[i].Previous_output)
+	}
+	for i := uint64(0); i < tx.Tx_out_count; i++ {
+		hash, _ := utils.GetHash(&tx)
+		outPoint := message.NewOutPoint(hash, uint32(i))
+		b.UTXO[outPoint] = true
+	}
 }
 
 func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) bool {
@@ -59,14 +75,21 @@ func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) b
 	newTransactions := sBlock.Txns
 
 	lastBlockHash := b.Block[len(b.Block)-1].HeaderHash
-	if newBlock.Previous_block_header_hash != lastBlockHash {
+	if newBlock.Previous_block_header_hash != lastBlockHash { // previous_hash_verification
 		return false
 	}
 
-	if newBlock.Merkle_root_hash != message.MakeMerkleTree(newTransactions) {
+	if newBlock.Merkle_root_hash != message.MakeMerkleTree(newTransactions) { // merkleTree_hash_verification
 		return false
 	}
 
+	for _, transaction := range newTransactions {
+		if b.verifyTransaction(transaction) == false {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock) {
@@ -86,7 +109,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 
 		for i := 0; i < len(staleTransactions); i++ { // roll back
 			transaction := staleTransactions[i]
-			hash, _ := utils.GetHash(transaction)
+			hash, _ := utils.GetHash(&transaction)
 			delete(b.TX, hash)
 			b.Mempool[hash] = transaction
 		}
@@ -101,7 +124,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 
 		for i := 0; i < len(validTransactions); i++ {
 			transaction := validTransactions[i]
-			hash, _ := utils.GetHash(transaction)
+			hash, _ := utils.GetHash(&transaction)
 			b.TX[hash] = transaction
 			delete(b.Mempool, hash)
 		}
@@ -114,9 +137,15 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	b.Mtx.Unlock()
 }
 
-func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits uint32, peer Peer) {
+func (b *BlockChain) mine(version int32, nBits uint32, peer Peer) {
 	b.Mining = true
 	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
+
+	var TS []message.Transaction
+	for _, value := range b.Mempool {
+		TS = append(TS, value)
+	}
+
 	nonce := uint32(0)
 	for b.Mining {
 		block, err := message.CreateBlock(version, previous_block_header_hash, TS, nBits, nonce)
@@ -124,14 +153,14 @@ func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits uint32,
 			//newBlock := []message.Block{block}
 			var serializedBlock message.SerializedBlock
 			serializedBlock.Header = block
-			serializedBlock.HeaderHash, _ = utils.GetHash(block)
+			serializedBlock.HeaderHash, _ = utils.GetHash(&block)
 			serializedBlock.Txns = TS
 
 			var newBlock []message.SerializedBlock
 			newBlock = append(newBlock, serializedBlock)
 			b.addBlock(len(b.Block), newBlock)
 
-			peer.BroadcastBlock()
+			peer.BroadcastBlock(serializedBlock)
 			break
 		}
 		nonce++

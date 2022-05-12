@@ -20,11 +20,18 @@ func (t *Transaction) PutBuffer(writer utils.BufWriter) (err error) {
 	if err != nil {
 		return
 	}
-	err = t.Tx_in.PutBuffer(writer)
-	if err != nil {
-		return
+	for i := range t.Tx_in {
+		err = t.Tx_in[i].PutBuffer(writer)
+		if err != nil {
+			return
+		}
 	}
-	err = t.Tx_out.PutBuffer(writer)
+	for i := range t.Tx_out {
+		err = t.Tx_out[i].PutBuffer(writer)
+		if err != nil {
+			return
+		}
+	}
 	if err != nil {
 		return
 	}
