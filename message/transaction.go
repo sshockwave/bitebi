@@ -43,7 +43,7 @@ func CreateTransaction(version int32, tx_in_count uint64, tx_in []txIn, tx_out_c
 	return ts
 }
 
-func makeMerkleTree(TS []Transaction) [32]byte {
+func MakeMerkleTree(TS []Transaction) [32]byte {
 	if len(TS) == 1 {
 		hash, _ := utils.GetHash(&TS[0])
 		return hash
@@ -52,8 +52,8 @@ func makeMerkleTree(TS []Transaction) [32]byte {
 		m = len(TS) / 2
 		TS1 := TS[:m+1]
 		TS2 := TS[m+1:]
-		hash1 := makeMerkleTree(TS1)
-		hash2 := makeMerkleTree(TS2)
+		hash1 := MakeMerkleTree(TS1)
+		hash2 := MakeMerkleTree(TS2)
 		var src [64]byte
 		for i := 0; i < 32; i++ {
 			src[i] = hash1[i]

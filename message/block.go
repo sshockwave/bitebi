@@ -47,7 +47,7 @@ func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transa
 	var block Block
 	block.Version = version
 	block.Previous_block_header_hash = previous_block_header_hash
-	block.Merkle_root_hash = makeMerkleTree(TS)
+	block.Merkle_root_hash = MakeMerkleTree(TS)
 	block.Time = uint32(time.Now().Unix())
 	block.NBits = nBits
 	block.Nonce = nonce
@@ -69,9 +69,9 @@ func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transa
 
 // https://developer.bitcoin.org/reference/block_chain.html#serialized-blocks
 type SerializedBlock struct {
-	Header Block
+	Header     Block
 	HeaderHash [32]byte
-	Txns []Transaction
+	Txns       []Transaction
 }
 
 func (b *SerializedBlock) PutBuffer(writer utils.BufWriter) (err error) {

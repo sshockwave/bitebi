@@ -9,8 +9,8 @@ import (
 
 type BlockChain struct {
 	// All blocks
-	Block []message.Block
-	Mtx sync.Mutex
+	Block []message.SerializedBlock
+	Mtx   sync.Mutex
 	// All known transactions
 	TX map[[32]byte]message.Transaction
 	// The transactions that have not been added to a block
@@ -19,6 +19,7 @@ type BlockChain struct {
 }
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
+	// Currently, this function only verified the wallet of input >= the wallet of output
 	in_count := tx.Tx_in_count
 	tx_in := tx.Tx_in
 	out_count := tx.Tx_out_count
@@ -48,31 +49,85 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 	b.Mempool[txID] = tx
 }
 
-/*func (b *BlockChain) verifyBlock(block Block, TS []Transaction) bool {
-	if block.merkle_root_hash != message.makeMerkleTree(TS) {
+func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) bool {
+	newBlock := sBlock.Header
+	//newBlockHash := sBlock.HeaderHash
+	newTransactions := sBlock.Txns
+
+	lastBlockHash := b.Block[len(b.Block)-1].HeaderHash
+	if newBlock.Previous_block_header_hash != lastBlockHash {
 		return false
 	}
-}*/
 
-func (b *BlockChain) addBlock(starPos int, newBlocks []message.Block) {
+	if newBlock.Merkle_root_hash != message.MakeMerkleTree(newTransactions) {
+		return false
+	}
+
+}
+
+func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock) {
 	// TODO
 	// len(b.block) < starPos + len(newBlocks)
 	b.Mtx.Lock()
+	chainLength := len(b.Block)
+	newChainLength := startPos - 1 + len(newBlocks)
+	if chainLength < newChainLength && chainLength >= startPos {
+		var staleTransactions []message.Transaction // stale transactions
+		for i := startPos; i <= chainLength-1; i++ {
+			transactions := b.Block[i].Txns
+			for j := 0; j < len(transactions); j++ {
+				staleTransactions = append(staleTransactions, transactions[j])
+			}
+		}
 
+		for i := 0; i < len(staleTransactions); i++ { // roll back
+			transaction := staleTransactions[i]
+			hash, _ := utils.GetHash(transaction)
+			delete(b.TX, hash)
+			b.Mempool[hash] = transaction
+		}
+
+		var validTransactions []message.Transaction
+		for i := 0; i < len(newBlocks); i++ {
+			newTransactions := newBlocks[i].Txns
+			for j := 0; j < len(newTransactions); j++ {
+				validTransactions = append(validTransactions, newTransactions[j])
+			}
+		}
+
+		for i := 0; i < len(validTransactions); i++ {
+			transaction := validTransactions[i]
+			hash, _ := utils.GetHash(transaction)
+			b.TX[hash] = transaction
+			delete(b.Mempool, hash)
+		}
+
+		b.Block = b.Block[:startPos]
+		for i := 0; i < len(newBlocks); i++ {
+			b.Block = append(b.Block, newBlocks[i])
+		}
+	}
 	b.Mtx.Unlock()
 }
 
 func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits uint32, peer Peer) {
 	b.Mining = true
-	previous_block_header_hash := b.Block[len(b.Block)-1].Previous_block_header_hash
+	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
 	nonce := uint32(0)
 	for b.Mining {
 		block, err := message.CreateBlock(version, previous_block_header_hash, TS, nBits, nonce)
 		if err == nil {
-			newBlock := []message.Block{block}
+			//newBlock := []message.Block{block}
+			var serializedBlock message.SerializedBlock
+			serializedBlock.Header = block
+			serializedBlock.HeaderHash, _ = utils.GetHash(block)
+			serializedBlock.Txns = TS
+
+			var newBlock []message.SerializedBlock
+			newBlock = append(newBlock, serializedBlock)
 			b.addBlock(len(b.Block), newBlock)
 
-			peer.broadcastBlock()
+			peer.BroadcastBlock()
 			break
 		}
 		nonce++
