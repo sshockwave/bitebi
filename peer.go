@@ -67,7 +67,8 @@ func (p *Peer) messageLoop() {
 	}
 }
 
-func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p Peer, err error) {
+func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p *Peer, err error) {
+	p = new(Peer)
 	p.Chain = chain
 	p.Config = cfg
 	if port < 0 {

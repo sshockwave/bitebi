@@ -17,7 +17,7 @@ type CmdApp struct {
 	isTerminal bool
 	scanner    *bufio.Scanner
 	blockchain BlockChain
-	peer       Peer
+	peer       *Peer
 	hasPeer    bool
 	name       string
 }
@@ -41,7 +41,7 @@ func (c *CmdApp) Serve() {
 		switch c.scanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, 1, &c.peer)
+			go c.blockchain.mine(0, 1, c.peer)
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.Mining = false
@@ -57,7 +57,7 @@ func (c *CmdApp) Serve() {
 			} else {
 				var new_c PeerConnection
 				new_c.Conn = conn
-				new_c.peer = &c.peer
+				new_c.peer = c.peer
 				go new_c.Serve()
 			}
 		case "createtx":
