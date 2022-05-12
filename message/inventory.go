@@ -46,14 +46,14 @@ type InvMsg struct {
 }
 const InvMaxItemCount = 50_000;
 var invItemCountExceeded = errors.New("invItemCountExceeded")
-func NewInvMsg(reader utils.BufReader) (ret InvMsg, err error) {
+func (ret *InvMsg) LoadBuffer(reader utils.BufReader) (err error) {
     var cnt uint64
     cnt, err = reader.ReadCompactUint()
     if err != nil {
         return
     }
     if cnt > InvMaxItemCount {
-        return ret, invItemCountExceeded
+        return invItemCountExceeded
     }
     ret.Inv = make([]Inventory, cnt)
     for i := uint64(0); i < cnt; i++ {

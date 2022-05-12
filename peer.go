@@ -24,6 +24,7 @@ type Peer struct {
 	ln net.Listener
 	conns map[*PeerConnection]void
 	lock sync.RWMutex
+	orphans Orphans
 }
 
 func (c *PeerConnection) Serve() {
@@ -161,6 +162,7 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "inv":
 		c.onInv(payload)
 	case "getdata":
+		c.onGetData(payload)
 	case "tx":
 		c.onTx(payload)
 	case "block":
@@ -280,7 +282,8 @@ func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
 
 func (c *PeerConnection) onInv(data []byte) (err error) {
 	reader := utils.NewBufReader(bytes.NewBuffer(data))
-	invmsg, err := message.NewInvMsg(reader)
+	var invmsg message.InvMsg
+	err = invmsg.LoadBuffer(reader)
 	if err != nil {
 		return
 	}
@@ -295,7 +298,9 @@ func (c *PeerConnection) onInv(data []byte) (err error) {
 				_, ok = c.peer.Chain.Height[v.Hash]
 			}
 			if !ok {
-				_, ok = c.peer.history[v.Hash]
+				if node, tmp := c.peer.orphans.nodes[v.Hash]; tmp {
+					ok = node.blk != nil
+				}
 			}
 			if !ok {
 				retmsg.Inv = append(retmsg.Inv, v)
@@ -342,6 +347,53 @@ func (c *PeerConnection) onTx(data []byte) (err error) {
 	if !flag {
 		c.peer.Chain.addTransaction(tx)
 		err = c.peer.BroadcastTransaction(tx)
+	}
+	return
+}
+
+func (c *PeerConnection) onGetData(data []byte) (err error) {
+	reader := utils.NewBufReader(bytes.NewBuffer(data))
+	var msg message.InvMsg
+	err = msg.LoadBuffer(reader)
+	if err != nil {
+		return err
+	}
+	for _, v := range msg.Inv {
+		switch v.Type {
+		case message.MSG_BLOCK:
+			var blk message.SerializedBlock
+			c.peer.Chain.Mtx.Lock()
+			h, ok := c.peer.Chain.Height[v.Hash]
+			if ok {
+				blk = c.peer.Chain.Block[h]
+			}
+			if !ok {
+				var node *orphanNode
+				node, ok = c.peer.orphans.nodes[v.Hash]
+				if ok {
+					if node.blk != nil {
+						blk = *node.blk
+					} else {
+						ok = false
+					}
+				}
+			}
+			c.peer.Chain.Mtx.Unlock()
+			if ok {
+				data, _ := utils.GetBytes(&blk)
+				c.sendMessage("block", data)
+			}
+		case message.MSG_TX:
+			var tx message.Transaction
+			var ok bool
+			c.peer.Chain.Mtx.Lock()
+			tx, ok = c.peer.Chain.TX[v.Hash]
+			c.peer.Chain.Mtx.Unlock()
+			if ok {
+				data, _ := utils.GetBytes(&tx)
+				c.sendMessage("tx", data)
+			}
+		}
 	}
 	return
 }
