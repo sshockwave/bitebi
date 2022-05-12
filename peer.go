@@ -78,18 +78,30 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p Pee
 	return
 }
 
-func (p *Peer) BroadcastTransaction(tx message.Transaction) {
+func (p *Peer) BroadcastTransaction(tx message.Transaction) (err error) {
+	var b []byte
+	b, err = utils.GetBytes(&tx)
+	if err != nil {
+		log.Printf("[ERROR] Serializing tx: " + err.Error())
+		return
+	}
 	for c := range p.conns {
-		b, err := utils.GetBytes(&tx)
-		if err != nil {
-			log.Printf("[ERROR] Serializing tx: " + err.Error())
-			continue
-		}
 		c.sendMessage("tx", b)
 	}
+	return
 }
 
-func (p *Peer) BroadcastBlock(blk message.SerializedBlock) {
+func (p *Peer) BroadcastBlock(blk message.SerializedBlock) (err error) {
+	var b []byte
+	b, err = utils.GetBytes(&blk)
+	if err != nil {
+		log.Printf("[ERROR] Serializing tx: " + err.Error())
+		return
+	}
+	for c := range p.conns {
+		c.sendMessage("tx", b)
+	}
+	return
 }
 
 type PeerConnection struct {
