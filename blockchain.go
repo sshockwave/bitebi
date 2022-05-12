@@ -66,7 +66,7 @@ func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) b
 	if newBlock.Merkle_root_hash != message.MakeMerkleTree(newTransactions) {
 		return false
 	}
-
+	return true
 }
 
 func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock) {
@@ -86,7 +86,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 
 		for i := 0; i < len(staleTransactions); i++ { // roll back
 			transaction := staleTransactions[i]
-			hash, _ := utils.GetHash(transaction)
+			hash, _ := utils.GetHash(&transaction)
 			delete(b.TX, hash)
 			b.Mempool[hash] = transaction
 		}
@@ -101,7 +101,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 
 		for i := 0; i < len(validTransactions); i++ {
 			transaction := validTransactions[i]
-			hash, _ := utils.GetHash(transaction)
+			hash, _ := utils.GetHash(&transaction)
 			b.TX[hash] = transaction
 			delete(b.Mempool, hash)
 		}
@@ -114,9 +114,15 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	b.Mtx.Unlock()
 }
 
-func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits uint32, peer Peer) {
+func (b *BlockChain) mine(version int32, nBits uint32, peer Peer) {
 	b.Mining = true
 	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
+
+	var TS []message.Transaction
+	for _, value := range b.Mempool {
+		TS = append(TS, value)
+	}
+
 	nonce := uint32(0)
 	for b.Mining {
 		block, err := message.CreateBlock(version, previous_block_header_hash, TS, nBits, nonce)
@@ -124,14 +130,14 @@ func (b *BlockChain) mine(version int32, TS []message.Transaction, nBits uint32,
 			//newBlock := []message.Block{block}
 			var serializedBlock message.SerializedBlock
 			serializedBlock.Header = block
-			serializedBlock.HeaderHash, _ = utils.GetHash(block)
+			serializedBlock.HeaderHash, _ = utils.GetHash(&block)
 			serializedBlock.Txns = TS
 
 			var newBlock []message.SerializedBlock
 			newBlock = append(newBlock, serializedBlock)
 			b.addBlock(len(b.Block), newBlock)
 
-			peer.BroadcastBlock()
+			peer.BroadcastBlock(serializedBlock)
 			break
 		}
 		nonce++
