@@ -142,6 +142,7 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "headers":
 		// Not yet in plan
 	case "getblocks":
+		c.onGetBlocks(payload)
 		// return "inv", at most 500
 	case "mempool":
 		c.onMempool(payload)
@@ -222,5 +223,47 @@ func (c *PeerConnection) onMempool(data []byte) (err error) {
 			return
 		}
 	}
+	return
+}
+
+func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
+	reader := bytes.NewBuffer(data)
+	msg, err := message.NewGetBlocksMsg(reader)
+	if err != nil {
+		return
+	}
+	// ignoring msg.Version
+	var commonHeight int
+	for _, hash := range msg.BlockHeaderHashes {
+		c.peer.Chain.Mtx.Lock()
+		for j := len(c.peer.Chain.Block) - 1; j >= 0; j-- {
+			if c.peer.Chain.Block[j].HeaderHash == hash {
+				commonHeight = j
+				break
+			}
+		}
+		c.peer.Chain.Mtx.Unlock()
+		if commonHeight > 0 {
+			break
+		}
+	}
+	inv := make([]message.Inventory, 0)
+	cnt := 0
+	for i := commonHeight + 1; i < len(c.peer.Chain.Block); i++ {
+		if c.peer.Chain.Block[i].HeaderHash == msg.StopHash {
+			break
+		}
+		inv = append(inv, message.Inventory{message.MSG_BLOCK, c.peer.Chain.Block[i].HeaderHash})
+		cnt += 1
+		if cnt == message.InvMaxItemCount {
+			break
+		}
+	}
+	invmsg := message.InvMsg{inv}
+	invbytes, err := utils.GetBytes(&invmsg)
+	if err != nil {
+		return
+	}
+	err = c.sendMessage("inv", invbytes)
 	return
 }

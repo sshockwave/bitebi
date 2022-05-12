@@ -9,7 +9,7 @@ import (
 
 type BlockChain struct {
 	// All blocks
-	Block []message.Block
+	Block []message.SerializedBlock
 	Mtx sync.Mutex
 	// All known transactions
 	TX map[[32]byte]message.Transaction
