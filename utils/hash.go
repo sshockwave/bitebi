@@ -9,16 +9,12 @@ func Sha256Twice(data []byte) [32]byte {
     return sha256.Sum256(chksum1[:])
 }
 
-type BinaryWritable interface {
-    PutBuffer(BufWriter) (err error)
-}
-
 func GetHash(data BinaryWritable) (hash [32]byte, err error) {
-	writer := NewBufWriter()
-	err = data.PutBuffer(writer)
+	var bytes []byte
+	bytes, err = GetBytes(data)
 	if err != nil {
 		return
 	}
-	hash = Sha256Twice(writer.Collect())
+	hash = Sha256Twice(bytes)
 	return
 }

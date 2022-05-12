@@ -81,3 +81,17 @@ func (b *BufWriter) WriteInt32(v int32) (err error) {
 func (b *BufWriter) WriteInt64(v int64) (err error) {
     return binary.Write(&b.out, binary.LittleEndian, v)
 }
+
+type BinaryWritable interface {
+    PutBuffer(BufWriter) (err error)
+}
+
+func GetBytes(data BinaryWritable) (oput []byte, err error) {
+	writer := NewBufWriter()
+	err = data.PutBuffer(writer)
+	if err != nil {
+		return
+	}
+	oput = writer.Collect()
+    return
+}
