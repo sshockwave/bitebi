@@ -284,7 +284,8 @@ func (c *PeerConnection) onInv(data []byte) (err error) {
 		return
 	}
 	retmsg := message.InvMsg{make([]message.Inventory, 0)}
-	c.peer.lock.Lock()
+	c.peer.lock.RLock()
+	c.peer.Chain.Mtx.Lock()
 	for _, v := range invmsg.Inv {
 		switch v.Type {
 		case message.MSG_BLOCK:
@@ -308,7 +309,8 @@ func (c *PeerConnection) onInv(data []byte) (err error) {
 			log.Printf("[ERROR] Unknown inv type: " + strconv.Itoa(int(v.Type)))
 		}
 	}
-	c.peer.lock.Unlock()
+	c.peer.Chain.Mtx.Unlock()
+	c.peer.lock.RUnlock()
 	if len(retmsg.Inv) > 0 {
 		var data []byte
 		data, err = utils.GetBytes(&retmsg)
