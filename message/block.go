@@ -66,3 +66,35 @@ func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transa
 		return block, blockHashNotValid
 	}
 }
+
+// https://developer.bitcoin.org/reference/block_chain.html#serialized-blocks
+type SerializedBlock struct {
+	Header Block
+	HeaderHash [32]byte
+	Txns []Transaction
+}
+
+func (b *SerializedBlock) PutBuffer(writer utils.BufWriter) (err error) {
+	err = b.Header.PutBuffer(writer)
+	if err != nil {
+		return
+	}
+	err = writer.WriteCompactUint(uint64(len(b.Txns)))
+	if err != nil {
+		return
+	}
+	for i := range b.Txns {
+		err = b.Txns[i].PutBuffer(writer)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func CreateSerialBlock(block Block, tx []Transaction) (sb SerializedBlock, err error) {
+	sb.Header = block
+	sb.Txns = tx
+	sb.HeaderHash, err = utils.GetHash(&block)
+	return
+}
