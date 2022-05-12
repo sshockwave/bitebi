@@ -159,6 +159,7 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "mempool":
 		c.onMempool(payload)
 	case "inv":
+		c.onInv(payload)
 	case "getdata":
 	case "tx":
 	case "block":
@@ -273,5 +274,48 @@ func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
 		return
 	}
 	err = c.sendMessage("inv", invbytes)
+	return
+}
+
+func (c *PeerConnection) onInv(data []byte) (err error) {
+	reader := utils.NewBufReader(bytes.NewBuffer(data))
+	invmsg, err := message.NewInvMsg(reader)
+	if err != nil {
+		return
+	}
+	retmsg := message.InvMsg{make([]message.Inventory, 0)}
+	c.peer.lock.Lock()
+	for _, v := range invmsg.Inv {
+		switch v.Type {
+		case message.MSG_BLOCK:
+			ok := false
+			if !ok {
+				_, ok = c.peer.Chain.Height[v.Hash]
+			}
+			if !ok {
+				_, ok = c.peer.history[v.Hash]
+			}
+			if !ok {
+				retmsg.Inv = append(retmsg.Inv, v)
+			}
+		case message.MSG_TX:
+			ok := false
+			_, ok = c.peer.Chain.TX[v.Hash]
+			if !ok {
+				retmsg.Inv = append(retmsg.Inv, v)
+			}
+		default:
+			log.Printf("[ERROR] Unknown inv type: " + strconv.Itoa(int(v.Type)))
+		}
+	}
+	c.peer.lock.Unlock()
+	if len(retmsg.Inv) > 0 {
+		var data []byte
+		data, err = utils.GetBytes(&retmsg)
+		if err != nil {
+			return
+		}
+		err = c.sendMessage("getdata", data)
+	}
 	return
 }
