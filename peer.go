@@ -30,7 +30,12 @@ func (c *PeerConnection) Serve() {
 	c.peer.conns[c] = void_null
 	c.peer.lock.Unlock()
 	for {
-		err := c.readMessage()
+		command, payload, err := c.readMessage()
+		if err != nil {
+			log.Println("[ERROR] " + err.Error())
+			break
+		}
+		err = c.dispatchMessage(command, payload)
 		if err != nil {
 			log.Println("[ERROR] " + err.Error())
 			break
@@ -83,7 +88,7 @@ type PeerConnection struct {
 	peer *Peer
 }
 
-func (c *PeerConnection) readMessage() (err error) {
+func (c *PeerConnection) readMessage() (command string, payload []byte, err error) {
 	header := make([]byte, 4 + 12 + 4 + 4)
 	_, err = io.ReadFull(c.Conn, header)
 	if err != nil {
@@ -98,14 +103,14 @@ func (c *PeerConnection) readMessage() (err error) {
 		err = errors.New("invalidStartString")
 		return
 	}
-	command := string(bytes.TrimRight(header[4:16], "\x00"))
+	command = string(bytes.TrimRight(header[4:16], "\x00"))
 	payload_size := binary.LittleEndian.Uint32(header[16:20])
 	if payload_size > c.peer.Config.MaxNBits {
 		log.Println("[ERROR] Payload too large")
 		err = errors.New("payloadTooLarge")
 		return
 	}
-	payload := make([]byte, payload_size)
+	payload = make([]byte, payload_size)
 	_, err = io.ReadFull(c.Conn, payload)
 	if err != nil {
 		log.Println("[ERROR] Error occurred while reading payload")
@@ -116,6 +121,10 @@ func (c *PeerConnection) readMessage() (err error) {
 		log.Println("[ERROR] Checksum do not match in message, discarding")
 		return
 	}
+	return
+}
+
+func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err error) {
 	reader := utils.NewBufReader(bytes.NewBuffer(payload))
 	switch command {
 	// Data messages
@@ -160,5 +169,24 @@ func (c *PeerConnection) readMessage() (err error) {
 	case "reject":
 		// Not yet in plan
 	}
+	return
+}
+
+func (c *PeerConnection) sendMessage(command string, payload []byte) (err error) {
+	header := utils.NewBufWriter()
+	header.WriteBytes(c.peer.Config.StartString[:])
+	t := []byte(command)
+	header.WriteBytes(t)
+	for i := 0; i < 12 - len(t); i++ {
+		header.WriteUint8(0)
+	}
+	header.WriteUint32(uint32(len(payload)))
+	chksum := utils.Sha256Twice(payload)
+	header.WriteBytes(chksum[:4])
+	_, err = c.Conn.Write(header.Collect())
+	if err != nil {
+		return
+	}
+	_, err = c.Conn.Write(payload)
 	return
 }
