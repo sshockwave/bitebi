@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/sshockwave/bitebi/message"
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
 )
@@ -77,10 +78,18 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p Pee
 	return
 }
 
-func (p *Peer) BroadcastTransaction() {
+func (p *Peer) BroadcastTransaction(tx message.Transaction) {
+	for c := range p.conns {
+		b, err := utils.GetBytes(&tx)
+		if err != nil {
+			log.Printf("[ERROR] Serializing tx: " + err.Error())
+			continue
+		}
+		c.sendMessage("tx", b)
+	}
 }
 
-func (p *Peer) BroadcastBlock() {
+func (p *Peer) BroadcastBlock(blk message.SerializedBlock) {
 }
 
 type PeerConnection struct {
@@ -125,7 +134,6 @@ func (c *PeerConnection) readMessage() (command string, payload []byte, err erro
 }
 
 func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err error) {
-	reader := utils.NewBufReader(bytes.NewBuffer(payload))
 	switch command {
 	// Data messages
 	// https://developer.bitcoin.org/reference/p2p_networking.html#id1
@@ -136,12 +144,14 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "getblocks":
 		// return "inv", at most 500
 	case "mempool":
+		c.onMempool(payload)
 	case "inv":
 	case "getdata":
 	case "tx":
 	case "block":
 		// SerializedBlock
 	case "merkleblock":
+		// Not yet in plan
 	case "notfound":
 		// Not yet in plan
 
@@ -188,5 +198,29 @@ func (c *PeerConnection) sendMessage(command string, payload []byte) (err error)
 		return
 	}
 	_, err = c.Conn.Write(payload)
+	return
+}
+
+func (c *PeerConnection) onMempool(data []byte) (err error) {
+	inv := make([][]message.Inventory, 0)
+	c.peer.Chain.Mtx.Lock()
+	cur_pt := make([]message.Inventory, 0)
+	inv = append(inv, cur_pt)
+	for k := range c.peer.Chain.Mempool {
+		if len(cur_pt) == message.InvMaxItemCount {
+			cur_pt := make([]message.Inventory, 0)
+			inv = append(inv, cur_pt)
+		}
+		cur_pt = append(cur_pt, message.Inventory{message.MSG_TX, k})
+	}
+	c.peer.Chain.Mtx.Unlock()
+	for _, v := range inv {
+		msg := message.InvMsg{v}
+		data, _ = utils.GetBytes(&msg)
+		err = c.sendMessage("inv", data)
+		if err != nil {
+			return
+		}
+	}
 	return
 }

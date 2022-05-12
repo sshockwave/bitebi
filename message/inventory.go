@@ -1,10 +1,10 @@
 package message
 
 import (
-    "errors"
-    "github.com/sshockwave/bitebi/utils"
-)
+	"errors"
 
+	"github.com/sshockwave/bitebi/utils"
+)
 
 // https://developer.bitcoin.org/reference/p2p_networking.html#data-messages
 const (
@@ -30,13 +30,21 @@ func NewInventory(reader utils.BufReader) (ret Inventory, err error) {
     ret.Hash, err = reader.Read32Bytes()
     return
 }
+func (o *Inventory) PutBuffer(writer utils.BufWriter) (err error) {
+    err = writer.WriteUint32(o.Type)
+    if err != nil {
+        return
+    }
+    err = writer.Write32Bytes(o.Hash)
+    return
+}
 
 // Inventory
 // https://developer.bitcoin.org/reference/p2p_networking.html#inv
 type InvMsg struct {
-    inv []Inventory
+    Inv []Inventory
 }
-const invMaxItemCount = 50_000;
+const InvMaxItemCount = 50_000;
 var invItemCountExceeded = errors.New("invItemCountExceeded")
 func NewInvMsg(reader utils.BufReader) (ret InvMsg, err error) {
     var cnt uint64
@@ -44,12 +52,26 @@ func NewInvMsg(reader utils.BufReader) (ret InvMsg, err error) {
     if err != nil {
         return
     }
-    if cnt > invMaxItemCount {
+    if cnt > InvMaxItemCount {
         return ret, invItemCountExceeded
     }
-    ret.inv = make([]Inventory, cnt)
+    ret.Inv = make([]Inventory, cnt)
     for i := uint64(0); i < cnt; i++ {
-        ret.inv[i], err = NewInventory(reader)
+        ret.Inv[i], err = NewInventory(reader)
+        if err != nil {
+            return
+        }
+    }
+    return
+}
+
+func (m *InvMsg) PutBuffer(writer utils.BufWriter) (err error) {
+    err = writer.WriteCompactUint(uint64(len(m.Inv)))
+    if err != nil {
+        return
+    }
+    for i := range m.Inv {
+        err = m.Inv[i].PutBuffer(writer)
         if err != nil {
             return
         }
