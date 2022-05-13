@@ -4,36 +4,36 @@ import (
 	"github.com/sshockwave/bitebi/utils"
 )
 
-type txIn struct {
+type TxIn struct {
 	Previous_output  Outpoint
-	script_bytes     uint64
-	signature_script []byte
-	sequence         uint32
+	Script_bytes     uint64
+	Signature_script []byte
+	Sequence         uint32
 }
 
-func (t *txIn) PutBuffer(writer utils.BufWriter) (err error) {
+func (t *TxIn) PutBuffer(writer utils.BufWriter) (err error) {
 	err = t.Previous_output.PutBuffer(writer)
 	if err != nil {
 		return
 	}
-	err = writer.WriteCompactUint(t.script_bytes)
+	err = writer.WriteCompactUint(t.Script_bytes)
 	if err != nil {
 		return
 	}
-	err = writer.WriteBytes(t.signature_script)
+	err = writer.WriteBytes(t.Signature_script)
 	if err != nil {
 		return
 	}
-	err = writer.WriteUint32(t.sequence)
+	err = writer.WriteUint32(t.Sequence)
 	return
 }
 
-func NewtxIn(previous_output Outpoint, script_bytes uint64, signature_script []byte, sequence uint32) txIn {
-	var ti txIn
+func NewtxIn(previous_output Outpoint, script_bytes uint64, signature_script []byte, sequence uint32) TxIn {
+	var ti TxIn
 	ti.Previous_output = previous_output
-	ti.script_bytes = script_bytes
-	ti.signature_script = signature_script
-	ti.sequence = sequence
+	ti.Script_bytes = script_bytes
+	ti.Signature_script = signature_script
+	ti.Sequence = sequence
 	return ti
 }
 
@@ -58,20 +58,20 @@ func NewOutPoint(hash [32]byte, index uint32) Outpoint {
 	return op
 }
 
-func (data *txIn) LoadBuffer(reader utils.BufReader) (err error) {
+func (data *TxIn) LoadBuffer(reader utils.BufReader) (err error) {
 	err = data.Previous_output.LoadBuffer(reader)
 	if err != nil {
 		return
 	}
-	data.script_bytes, err = reader.ReadCompactUint()
+	data.Script_bytes, err = reader.ReadCompactUint()
 	if err != nil {
 		return
 	}
-	data.signature_script, err = reader.ReadBytes(int(data.script_bytes))
+	data.Signature_script, err = reader.ReadBytes(int(data.Script_bytes))
 	if err != nil {
 		return
 	}
-	data.sequence, err = reader.ReadUint32()
+	data.Sequence, err = reader.ReadUint32()
 	return
 }
 

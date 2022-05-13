@@ -19,8 +19,9 @@ type BlockChain struct {
 	// The height of blocks
 	// used to examine the existence of a block
 	// TODO: maintain this information
-	Height map[[32]byte]int
-	UTXO   map[message.Outpoint]bool
+	Height     map[[32]byte]int
+	UTXO       map[message.Outpoint]bool
+	ClientName []byte
 }
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
@@ -75,7 +76,7 @@ func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) b
 	newTransactions := sBlock.Txns
 
 	lastBlockHash := b.Block[len(b.Block)-1].HeaderHash
-	if newBlock.Previous_block_header_hash != lastBlockHash { // previous_hash_verification
+	if startPos >= 1 && newBlock.Previous_block_header_hash != lastBlockHash { // previous_hash_verification
 		return false
 	}
 
@@ -142,7 +143,19 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer) {
 	b.Mining = true
 	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
 
-	var TS []message.Transaction
+	var rewardTransaction message.Transaction = message.Transaction{
+		Version: 0,
+		Tx_in:   []message.TxIn{},
+		Tx_out: []message.TxOut{
+			{
+				Value:     1, // How many bitcoins to use for reward?
+				Pk_script: b.ClientName,
+			},
+		},
+		Lock_time: 0,
+	}
+
+	var TS = []message.Transaction{rewardTransaction}
 	for _, value := range b.Mempool {
 		TS = append(TS, value)
 	}

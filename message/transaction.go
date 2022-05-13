@@ -7,10 +7,10 @@ import (
 )
 
 type Transaction struct {
-	Version      int32
-	Tx_in        []txIn
-	Tx_out       []txOut
-	Lock_time    uint32
+	Version   int32
+	Tx_in     []TxIn
+	Tx_out    []TxOut
+	Lock_time uint32
 }
 
 func (t *Transaction) PutBuffer(writer utils.BufWriter) (err error) {
@@ -45,7 +45,7 @@ func (t *Transaction) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func CreateTransaction(version int32, tx_in []txIn, tx_out []txOut, lock_time uint32) Transaction {
+func CreateTransaction(version int32, tx_in []TxIn, tx_out []TxOut, lock_time uint32) Transaction {
 	var ts Transaction
 	ts.Version = version
 	ts.Tx_in = tx_in
@@ -55,25 +55,26 @@ func CreateTransaction(version int32, tx_in []txIn, tx_out []txOut, lock_time ui
 }
 
 const HashL = 32
+
 func MakeMerkleTree(TS []Transaction) (res [HashL]byte) {
 	var tmp [HashL]byte
-	hashes := make([]byte, len(TS) * HashL)
+	hashes := make([]byte, len(TS)*HashL)
 	for i := range TS {
 		tmp, _ = utils.GetHash(&TS[i])
-		copy(hashes[i * HashL: (i + 1) * HashL], tmp[:])
+		copy(hashes[i*HashL:(i+1)*HashL], tmp[:])
 	}
 	return MakeMerkleTreeFromHashes(hashes)
 }
 func MakeMerkleTreeFromHashes(hashes []byte) (res [HashL]byte) {
 	for n := len(hashes) / HashL; n > 1; n = (n + 1) / 2 {
-		for i := 0; i < n / 2; i++ {
-			res = utils.Sha256Twice(hashes[2 * i * HashL: (2 * i + 2) * HashL])
-			copy(hashes[i * HashL: (i + 1) * HashL], res[:])
+		for i := 0; i < n/2; i++ {
+			res = utils.Sha256Twice(hashes[2*i*HashL : (2*i+2)*HashL])
+			copy(hashes[i*HashL:(i+1)*HashL], res[:])
 		}
-		if n % 2 == 1 {
-			p := hashes[(n - 1) * HashL: n * HashL]
+		if n%2 == 1 {
+			p := hashes[(n-1)*HashL : n*HashL]
 			res = utils.Sha256Twice(bytes.Join([][]byte{p, p}, []byte{}))
-			copy(hashes[(n - 1) / 2 * HashL: (n + 1) / 2 * HashL], res[:])
+			copy(hashes[(n-1)/2*HashL:(n+1)/2*HashL], res[:])
 		}
 	}
 	copy(res[:], hashes[:HashL])
@@ -87,7 +88,7 @@ func (tx *Transaction) LoadBuffer(reader utils.BufReader) (err error) {
 	}
 	var cnt uint64
 	cnt, err = reader.ReadCompactUint()
-	tx.Tx_in = make([]txIn, cnt)
+	tx.Tx_in = make([]TxIn, cnt)
 	for i := uint64(0); i < cnt; i++ {
 		err = tx.Tx_in[i].LoadBuffer(reader)
 		if err != nil {
@@ -95,7 +96,7 @@ func (tx *Transaction) LoadBuffer(reader utils.BufReader) (err error) {
 		}
 	}
 	cnt, err = reader.ReadCompactUint()
-	tx.Tx_out = make([]txOut, cnt)
+	tx.Tx_out = make([]TxOut, cnt)
 	for i := uint64(0); i < cnt; i++ {
 		err = tx.Tx_out[i].LoadBuffer(reader)
 		if err != nil {

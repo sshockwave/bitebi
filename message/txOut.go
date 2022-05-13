@@ -4,19 +4,19 @@ import (
 	"github.com/sshockwave/bitebi/utils"
 )
 
-type txOut struct {
+type TxOut struct {
 	Value     int64
 	Pk_script []byte
 }
 
-func NewtxOut(value int64, pk_script_bytes string) txOut {
-	var to txOut
+func NewtxOut(value int64, pk_script_bytes string) TxOut {
+	var to TxOut
 	to.Value = value
 	to.Pk_script = []byte(pk_script_bytes)
 	return to
 }
 
-func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
+func (t *TxOut) PutBuffer(writer utils.BufWriter) (err error) {
 	err = writer.WriteInt64(t.Value)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func (t *txOut) PutBuffer(writer utils.BufWriter) (err error) {
 	return
 }
 
-func (t *txOut) LoadBuffer(reader utils.BufReader) (err error) {
+func (t *TxOut) LoadBuffer(reader utils.BufReader) (err error) {
 	t.Value, err = reader.ReadInt64()
 	if err != nil {
 		return err

@@ -27,16 +27,16 @@ func doSerializationTest(in utils.BinaryWritable, out utils.BinaryReadable, t *t
 func TestAddr(t *testing.T) {
 	addrs := AddrMsg{Addrs: []NetworkIPAddress{
 		{
-			time: 123456,
+			time:     123456,
 			services: 434432,
-			Ipv6: [16]byte{0x7f,0x00,0x00,0,0,3,4,2},
-			Port: 8333,
+			Ipv6:     [16]byte{0x7f, 0x00, 0x00, 0, 0, 3, 4, 2},
+			Port:     8333,
 		},
 		{
-			time: 4433,
+			time:     4433,
 			services: 9929292,
-			Ipv6: [16]byte{0x00,0x00,0x00,0,0,3,4,0x33},
-			Port: 18333,
+			Ipv6:     [16]byte{0x00, 0x00, 0x00, 0, 0, 3, 4, 0x33},
+			Port:     18333,
 		},
 	}}
 	raw_data, err := utils.GetBytes(&addrs)
@@ -56,40 +56,41 @@ func TestAddr(t *testing.T) {
 
 var tx1 Transaction = Transaction{
 	Version: 2203,
-	Tx_in: []txIn{
+	Tx_in: []TxIn{
 		{
 			Previous_output: Outpoint{
-				Hash: [32]byte{33,22,0,11},
+				Hash:  [32]byte{33, 22, 0, 11},
 				Index: 12,
 			},
-			script_bytes: 4,
-			signature_script: []byte{22,1,1,4},
+			Script_bytes:     4,
+			Signature_script: []byte{22, 1, 1, 4},
 		},
 		{
 			Previous_output: Outpoint{
-				Hash: [32]byte{8,2,6,3},
+				Hash:  [32]byte{8, 2, 6, 3},
 				Index: 7,
 			},
-			script_bytes: 5,
-			signature_script: []byte{1,2,3,4,5},
+			Script_bytes:     5,
+			Signature_script: []byte{1, 2, 3, 4, 5},
 		},
 	},
-	Tx_out: []txOut{
+	Tx_out: []TxOut{
 		{
-			Value: 22555343,
-			Pk_script: []byte{12,3,7,5},
+			Value:     22555343,
+			Pk_script: []byte{12, 3, 7, 5},
 		},
 		{
-			Value: -33,
-			Pk_script: []byte{0,0,3,0,4},
+			Value:     -33,
+			Pk_script: []byte{0, 0, 3, 0, 4},
 		},
 		{
-			Value: 22,
+			Value:     22,
 			Pk_script: []byte{},
 		},
 	},
 	Lock_time: 332,
 }
+
 func TestTxSerializing(t *testing.T) {
 	b, err := utils.GetBytes(&tx1)
 	if err != nil {
@@ -107,13 +108,14 @@ func TestTxSerializing(t *testing.T) {
 }
 
 var blk1 Block = Block{
-	Version: -232,
-	Previous_block_header_hash: [32]byte{3,3,2,2,1,4},
-	Merkle_root_hash: [32]byte{1,2,3,4,55,66,77},
-	Time: 10101010,
-	NBits: 10,
-	Nonce: 0x7f7f7f7f,
+	Version:                    -232,
+	Previous_block_header_hash: [32]byte{3, 3, 2, 2, 1, 4},
+	Merkle_root_hash:           [32]byte{1, 2, 3, 4, 55, 66, 77},
+	Time:                       10101010,
+	NBits:                      10,
+	Nonce:                      0x7f7f7f7f,
 }
+
 func TestBlockHeaderSerialization(t *testing.T) {
 	var blk2 Block
 	doSerializationTest(&blk1, &blk2, t)
@@ -121,10 +123,10 @@ func TestBlockHeaderSerialization(t *testing.T) {
 
 var tx2 Transaction = Transaction{
 	Version: 330,
-	Tx_in: []txIn{},
-	Tx_out: []txOut{
+	Tx_in:   []TxIn{},
+	Tx_out: []TxOut{
 		{
-			Value: 625,
+			Value:     625,
 			Pk_script: []byte("Alice"),
 		},
 	},
@@ -143,11 +145,11 @@ func TestGetBlockSerialization(t *testing.T) {
 	gb := GetBlocksMsg{
 		Version: 2290,
 		BlockHeaderHashes: [][32]byte{
-			{0,1,1,5},
-			{0,1,1,4},
-			{4,2},
+			{0, 1, 1, 5},
+			{0, 1, 1, 4},
+			{4, 2},
 		},
-		StopHash: [32]byte{55,87,79},
+		StopHash: [32]byte{55, 87, 79},
 	}
 	var new_msg GetBlocksMsg
 	doSerializationTest(&gb, &new_msg, t)
@@ -157,15 +159,15 @@ func TestInventorySerialization(t *testing.T) {
 	invmsg := InvMsg{Inv: []Inventory{
 		{
 			Type: MSG_TX,
-			Hash: [32]byte{2,3,11,2,1,6},
+			Hash: [32]byte{2, 3, 11, 2, 1, 6},
 		},
 		{
 			Type: MSG_BLOCK,
-			Hash: [32]byte{0,8,7,9,9,45},
+			Hash: [32]byte{0, 8, 7, 9, 9, 45},
 		},
 		{
 			Type: MSG_BLOCK,
-			Hash: [32]byte{0,8,7,9,9,45},
+			Hash: [32]byte{0, 8, 7, 9, 9, 45},
 		},
 	}}
 	var new_msg InvMsg
@@ -173,17 +175,17 @@ func TestInventorySerialization(t *testing.T) {
 }
 
 func bytesReverse(arr []byte) {
-	for i, j := 0, len(arr) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
 		arr[i], arr[j] = arr[j], arr[i]
 	}
 }
 func doMerkleTreeHashTest(root_str string, hash_str []string, t *testing.T) {
-    root, err := hex.DecodeString(root_str)
+	root, err := hex.DecodeString(root_str)
 	bytesReverse(root)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hash_bin := make([]byte, HashL * len(hash_str))
+	hash_bin := make([]byte, HashL*len(hash_str))
 	for i := range hash_str {
 		var data []byte
 		data, err = hex.DecodeString(hash_str[i])
@@ -191,13 +193,14 @@ func doMerkleTreeHashTest(root_str string, hash_str []string, t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
-		copy(hash_bin[i * HashL: (i + 1) * HashL], data)
+		copy(hash_bin[i*HashL:(i+1)*HashL], data)
 	}
 	calc_res := MakeMerkleTreeFromHashes(hash_bin)
 	if bytes.Compare(root, calc_res[:]) != 0 {
 		t.Fatalf("Expected hash %v, found %v", root, calc_res)
 	}
 }
+
 // Taken from
 // https://gist.github.com/thereal1024/45bb035e580430988a34
 // These are big-endian inputs and they need to be reversed
