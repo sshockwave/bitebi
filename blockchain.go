@@ -32,10 +32,15 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 	tx_out := tx.Tx_out
 
 	wallet := int64(0) // wallet varification
-	for i := 0; i < int(in_count); i++ {
+	for i := 0; i < in_count; i++ {
 		ID := tx_in[i].Previous_output.Hash
 		index := tx_in[i].Previous_output.Index
-		wallet += b.TX[ID].Tx_out[index].Value // tx[ID] or mempool[ID]
+		transaction, ok := b.TX[ID]
+		if !ok {
+			return false
+		} else {
+			wallet += transaction.Tx_out[index].Value
+		}
 	}
 	for i := 0; i < out_count; i++ {
 		wallet -= tx_out[i].Value
@@ -75,9 +80,15 @@ func (b *BlockChain) verifyBlock(startPos int, sBlock message.SerializedBlock) b
 	//newBlockHash := sBlock.HeaderHash
 	newTransactions := sBlock.Txns
 
-	lastBlockHash := b.Block[len(b.Block)-1].HeaderHash
-	if startPos >= 1 && newBlock.Previous_block_header_hash != lastBlockHash { // previous_hash_verification
+	if startPos > len(b.Block) {
 		return false
+	}
+
+	if startPos >= 1 {
+		lastBlockHash := b.Block[startPos-1].HeaderHash
+		if newBlock.Previous_block_header_hash != lastBlockHash { // previous_hash_verification
+			return false
+		}
 	}
 
 	if newBlock.Merkle_root_hash != message.MakeMerkleTree(newTransactions) { // merkleTree_hash_verification
@@ -97,7 +108,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	// len(b.block) < starPos + len(newBlocks)
 	b.Mtx.Lock()
 	chainLength := len(b.Block)
-	newChainLength := startPos - 1 + len(newBlocks)
+	newChainLength := startPos + len(newBlocks)
 	if chainLength < newChainLength && chainLength >= startPos {
 		accepted = true
 		var staleTransactions []message.Transaction // stale transactions
@@ -136,7 +147,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 		}
 	}
 	b.Mtx.Unlock()
-	return
+	return accepted
 }
 
 func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer) {

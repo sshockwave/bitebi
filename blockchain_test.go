@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"github.com/sshockwave/bitebi/message"
-	"reflect"
 	"sync"
 	"testing"
 
@@ -17,6 +15,17 @@ var blk1 message.Block = message.Block{
 	Time:                       10101010,
 	NBits:                      10,
 	Nonce:                      0x7f7f7f7f,
+}
+
+func getHashBlock(b message.Block) [32]byte {
+	hash, _ := utils.GetHash(&b)
+	return hash
+}
+
+var sblk1 message.SerializedBlock = message.SerializedBlock{
+	Header:     blk1,
+	HeaderHash: getHashBlock(blk1),
+	Txns:       []message.Transaction{tx1},
 }
 
 var blockchain BlockChain = BlockChain{
@@ -69,68 +78,30 @@ var tx1 message.Transaction = message.Transaction{
 
 func TestVerifyTransaction(t *testing.T) {
 	if blockchain.verifyTransaction(tx1) {
-		t.Fatalf("It should return false, but it return true")
+		t.Fatalf("It should return false, but it returns true")
 	}
 }
 
 func TestAddTransaction(t *testing.T) {
 	blockchain.addTransaction(tx1)
-	hash, _ := utils.GetHash(&tx1)
-	tx2 := blockchain.Mempool[hash]
-	if utils.GetHash(&tx1) != utils.GetHash(&tx2) {
+	hash1, _ := utils.GetHash(&tx1)
+	tx2 := blockchain.Mempool[hash1]
+	hash2, _ := utils.GetHash(&tx2)
+	if hash1 != hash2 {
 		t.Fatalf("Failed to add transaction tx1")
 	}
 }
 
 func TestVerifyBlock(t *testing.T) {
-
+	if blockchain.verifyBlock(0, sblk1) {
+		t.Fatalf("It should return false, but it returns true")
+	}
 }
 
 func TestAddBlock(t *testing.T) {
-
-}
-
-func doSerializationTest(in utils.BinaryWritable, out utils.BinaryReadable, t *testing.T) {
-	b, err := utils.GetBytes(in)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	var sblks []message.SerializedBlock = []message.SerializedBlock{sblk1}
+	blockchain.addBlock(0, sblks)
+	if len(blockchain.Block) == 0 {
+		t.Fatalf("It should add this block, but it doesn't.")
 	}
-	reader := utils.NewBufReader(bytes.NewBuffer(b))
-	err = out.LoadBuffer(reader)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if !reflect.DeepEqual(in, out) {
-		t.Fatalf("Expected equal: %v = %v", in, out)
-	}
-}
-
-func TestTxSerializing(t *testing.T) {
-	b, err := utils.GetBytes(&tx1)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	var tx2 message.Transaction
-	reader := utils.NewBufReader(bytes.NewBuffer(b))
-	err = tx2.LoadBuffer(reader)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if !reflect.DeepEqual(tx1, tx2) {
-		t.Fatalf("Expected equal: %v = %v", tx1, tx2)
-	}
-}
-
-var blk1 message.Block = message.Block{
-	Version:                    -232,
-	Previous_block_header_hash: [32]byte{3, 3, 2, 2, 1, 4},
-	Merkle_root_hash:           [32]byte{1, 2, 3, 4, 55, 66, 77},
-	Time:                       10101010,
-	NBits:                      10,
-	Nonce:                      0x7f7f7f7f,
-}
-
-func TestBlockHeaderSerialization(t *testing.T) {
-	var blk2 message.Block
-	doSerializationTest(&blk1, &blk2, t)
 }
