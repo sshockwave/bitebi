@@ -34,7 +34,7 @@ func NewCmdApp() (app CmdApp) {
 func (c *CmdApp) Serve() {
 	for {
 		if c.isTerminal {
-			fmt.Print(">>")
+			fmt.Print(">> ")
 		}
 		if !c.scanner.Scan() {
 			break
@@ -86,6 +86,10 @@ func (c *CmdApp) Serve() {
 				log.Println("[ERROR] Time parsing error: " + err.Error())
 			}
 			time.Sleep(time.Duration(t) * time.Second)
+		case "exit":
+			break
+		case "quit":
+			break
 		}
 	}
 	if c.scanner.Err() != nil {
