@@ -25,9 +25,9 @@ type BlockChain struct {
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 	// Currently, this function only verified the wallet of input >= the wallet of output
-	in_count := tx.Tx_in_count
+	in_count := len(tx.Tx_in)
 	tx_in := tx.Tx_in
-	out_count := tx.Tx_out_count
+	out_count := len(tx.Tx_out)
 	tx_out := tx.Tx_out
 
 	wallet := int64(0) // wallet varification
@@ -36,7 +36,7 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 		index := tx_in[i].Previous_output.Index
 		wallet += b.TX[ID].Tx_out[index].Value // tx[ID] or mempool[ID]
 	}
-	for i := uint64(0); i < out_count; i++ {
+	for i := 0; i < out_count; i++ {
 		wallet -= tx_out[i].Value
 	}
 	if wallet < 0 {
@@ -59,10 +59,10 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 	txID, _ := utils.GetHash(&tx)
 	b.Mempool[txID] = tx
 
-	for i := uint64(0); i < tx.Tx_in_count; i++ {
+	for i := 0; i < len(tx.Tx_in); i++ {
 		delete(b.UTXO, tx.Tx_in[i].Previous_output)
 	}
-	for i := uint64(0); i < tx.Tx_out_count; i++ {
+	for i := 0; i < len(tx.Tx_out); i++ {
 		hash, _ := utils.GetHash(&tx)
 		outPoint := message.NewOutPoint(hash, uint32(i))
 		b.UTXO[outPoint] = true

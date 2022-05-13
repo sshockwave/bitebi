@@ -40,7 +40,6 @@ func TestAddr(t *testing.T) {
 
 var tx1 Transaction = Transaction{
 	Version: 2203,
-	Tx_in_count: 2,
 	Tx_in: []txIn{
 		{
 			Previous_output: Outpoint{
@@ -59,7 +58,6 @@ var tx1 Transaction = Transaction{
 			signature_script: []byte{1,2,3,4,5},
 		},
 	},
-	Tx_out_count: 3,
 	Tx_out: []txOut{
 		{
 			Value: 22555343,
