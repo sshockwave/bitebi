@@ -1,7 +1,7 @@
 package message
 
 import (
-	"crypto/sha256"
+	"bytes"
 
 	"github.com/sshockwave/bitebi/utils"
 )
@@ -54,26 +54,30 @@ func CreateTransaction(version int32, tx_in []txIn, tx_out []txOut, lock_time ui
 	return ts
 }
 
-func MakeMerkleTree(TS []Transaction) [32]byte {
-	if len(TS) == 1 {
-		hash, _ := utils.GetHash(&TS[0])
-		return hash
-	} else {
-		var m int
-		m = len(TS) / 2
-		TS1 := TS[:m+1]
-		TS2 := TS[m+1:]
-		hash1 := MakeMerkleTree(TS1)
-		hash2 := MakeMerkleTree(TS2)
-		var src [64]byte
-		for i := 0; i < 32; i++ {
-			src[i] = hash1[i]
-			src[32+i] = hash2[i]
-		}
-		res := sha256.Sum256(src[:])
-		res = sha256.Sum256(res[:])
-		return res
+const HashL = 32
+func MakeMerkleTree(TS []Transaction) (res [HashL]byte) {
+	var tmp [HashL]byte
+	hashes := make([]byte, len(TS) * HashL)
+	for i := range TS {
+		tmp, _ = utils.GetHash(&TS[i])
+		copy(hashes[i * HashL: (i + 1) * HashL], tmp[:])
 	}
+	return MakeMerkleTreeFromHashes(hashes)
+}
+func MakeMerkleTreeFromHashes(hashes []byte) (res [HashL]byte) {
+	for n := len(hashes) / HashL; n > 1; n = (n + 1) / 2 {
+		for i := 0; i < n / 2; i++ {
+			res = utils.Sha256Twice(hashes[2 * i * HashL: (2 * i + 2) * HashL])
+			copy(hashes[i * HashL: (i + 1) * HashL], res[:])
+		}
+		if n % 2 == 1 {
+			p := hashes[(n - 1) * HashL: n * HashL]
+			res = utils.Sha256Twice(bytes.Join([][]byte{p, p}, []byte{}))
+			copy(hashes[(n - 1) / 2 * HashL: (n + 1) / 2 * HashL], res[:])
+		}
+	}
+	copy(res[:], hashes[:HashL])
+	return
 }
 
 func (tx *Transaction) LoadBuffer(reader utils.BufReader) (err error) {
