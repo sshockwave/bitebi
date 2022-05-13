@@ -7,10 +7,11 @@ import (
 
 
 type BufWriter struct {
-    out bytes.Buffer
+    out *bytes.Buffer
 }
 
 func NewBufWriter() (b BufWriter) {
+    b.out = new(bytes.Buffer)
     return
 }
 
@@ -75,11 +76,11 @@ func (b *BufWriter) WriteCompactUint(v uint64) (err error) {
 }
 
 func (b *BufWriter) WriteInt32(v int32) (err error) {
-    return binary.Write(&b.out, binary.LittleEndian, v)
+    return binary.Write(b.out, binary.LittleEndian, v)
 }
 
 func (b *BufWriter) WriteInt64(v int64) (err error) {
-    return binary.Write(&b.out, binary.LittleEndian, v)
+    return binary.Write(b.out, binary.LittleEndian, v)
 }
 
 type BinaryWritable interface {

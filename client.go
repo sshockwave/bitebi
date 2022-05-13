@@ -27,6 +27,7 @@ func NewCmdApp() (app CmdApp) {
 	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
 	app.scanner = bufio.NewScanner(os.Stdin)
 	app.name = utils.RandomName()
+	log.Printf("[INFO] App initialized with name: " + app.name)
 	return
 }
 
