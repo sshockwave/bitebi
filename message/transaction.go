@@ -20,11 +20,19 @@ func (t *Transaction) PutBuffer(writer utils.BufWriter) (err error) {
 	if err != nil {
 		return
 	}
+	err = writer.WriteCompactUint(uint64(len(t.Tx_in)))
+	if err != nil {
+		return
+	}
 	for i := range t.Tx_in {
 		err = t.Tx_in[i].PutBuffer(writer)
 		if err != nil {
 			return
 		}
+	}
+	err = writer.WriteCompactUint(uint64(len(t.Tx_out)))
+	if err != nil {
+		return
 	}
 	for i := range t.Tx_out {
 		err = t.Tx_out[i].PutBuffer(writer)
@@ -93,5 +101,6 @@ func (tx *Transaction) LoadBuffer(reader utils.BufReader) (err error) {
 			return
 		}
 	}
+	tx.Lock_time, err = reader.ReadUint32()
 	return
 }

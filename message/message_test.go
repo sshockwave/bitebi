@@ -37,3 +37,57 @@ func TestAddr(t *testing.T) {
 		t.Fatalf("Expect equal: %v = %v", addrs, new_addrs)
 	}
 }
+
+var tx1 Transaction = Transaction{
+	Version: 2203,
+	Tx_in_count: 2,
+	Tx_in: []txIn{
+		{
+			Previous_output: Outpoint{
+				Hash: [32]byte{33,22,0,11},
+				Index: 12,
+			},
+			script_bytes: 4,
+			signature_script: []byte{22,1,1,4},
+		},
+		{
+			Previous_output: Outpoint{
+				Hash: [32]byte{8,2,6,3},
+				Index: 7,
+			},
+			script_bytes: 5,
+			signature_script: []byte{1,2,3,4,5},
+		},
+	},
+	Tx_out_count: 3,
+	Tx_out: []txOut{
+		{
+			Value: 22555343,
+			Pk_script: []byte{12,3,7,5},
+		},
+		{
+			Value: -33,
+			Pk_script: []byte{0,0,3,0,4},
+		},
+		{
+			Value: 22,
+			Pk_script: []byte{},
+		},
+	},
+	Lock_time: 332,
+}
+func TestTxSerializing(t *testing.T) {
+	b, err := utils.GetBytes(&tx1)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	var tx2 Transaction
+	reader := utils.NewBufReader(bytes.NewBuffer(b))
+	err = tx2.LoadBuffer(reader)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(tx1, tx2) {
+		t.Fatalf("Expected equal: %v = %v", tx1, tx2)
+	}
+}

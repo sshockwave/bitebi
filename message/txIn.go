@@ -63,7 +63,7 @@ func (data *txIn) LoadBuffer(reader utils.BufReader) (err error) {
 	if err != nil {
 		return
 	}
-	data.script_bytes, err = reader.ReadUint64()
+	data.script_bytes, err = reader.ReadCompactUint()
 	if err != nil {
 		return
 	}
