@@ -8,6 +8,21 @@ import (
 	"github.com/sshockwave/bitebi/utils"
 )
 
+func doSerializationTest(in utils.BinaryWritable, out utils.BinaryReadable, t *testing.T) {
+	b, err := utils.GetBytes(in)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	reader := utils.NewBufReader(bytes.NewBuffer(b))
+	err = out.LoadBuffer(reader)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(in, out) {
+		t.Fatalf("Expected equal: %v = %v", in, out)
+	}
+}
+
 func TestAddr(t *testing.T) {
 	addrs := AddrMsg{Addrs: []NetworkIPAddress{
 		{
@@ -88,4 +103,37 @@ func TestTxSerializing(t *testing.T) {
 	if !reflect.DeepEqual(tx1, tx2) {
 		t.Fatalf("Expected equal: %v = %v", tx1, tx2)
 	}
+}
+
+var blk1 Block = Block{
+	Version: -232,
+	Previous_block_header_hash: [32]byte{3,3,2,2,1,4},
+	Merkle_root_hash: [32]byte{1,2,3,4,55,66,77},
+	Time: 10101010,
+	NBits: 10,
+	Nonce: 0x7f7f7f7f,
+}
+func TestBlockHeaderSerialization(t *testing.T) {
+	var blk2 Block
+	doSerializationTest(&blk1, &blk2, t)
+}
+
+var tx2 Transaction = Transaction{
+	Version: 330,
+	Tx_in: []txIn{},
+	Tx_out: []txOut{
+		{
+			Value: 625,
+			Pk_script: []byte("Alice"),
+		},
+	},
+}
+
+func TestSerializedBlockSerialization(t *testing.T) {
+	sb, err := CreateSerialBlock(blk1, []Transaction{tx1, tx2})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	var sb2 SerializedBlock
+	doSerializationTest(&sb, &sb2, t)
 }

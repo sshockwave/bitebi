@@ -113,3 +113,7 @@ func (b *BufReader) ReadCompactUint() (data uint64, err error) {
     }
     return data, err
 }
+
+type BinaryReadable interface {
+    LoadBuffer(reader BufReader) (err error)
+}
