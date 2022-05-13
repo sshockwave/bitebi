@@ -151,3 +151,22 @@ func TestGetBlockSerialization(t *testing.T) {
 	var new_msg GetBlocksMsg
 	doSerializationTest(&gb, &new_msg, t)
 }
+
+func TestInventorySerialization(t *testing.T) {
+	invmsg := InvMsg{Inv: []Inventory{
+		{
+			Type: MSG_TX,
+			Hash: [32]byte{2,3,11,2,1,6},
+		},
+		{
+			Type: MSG_BLOCK,
+			Hash: [32]byte{0,8,7,9,9,45},
+		},
+		{
+			Type: MSG_BLOCK,
+			Hash: [32]byte{0,8,7,9,9,45},
+		},
+	}}
+	var new_msg InvMsg
+	doSerializationTest(&invmsg, &new_msg, t)
+}
