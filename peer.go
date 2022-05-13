@@ -253,8 +253,8 @@ func (c *PeerConnection) onMempool(data []byte) (err error) {
 }
 
 func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
-	reader := bytes.NewBuffer(data)
-	msg, err := message.NewGetBlocksMsg(reader)
+	var msg message.GetBlocksMsg
+	err = msg.LoadBuffer(utils.NewBufReader(bytes.NewBuffer(data)))
 	if err != nil {
 		return
 	}

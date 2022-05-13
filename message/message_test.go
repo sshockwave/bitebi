@@ -137,3 +137,17 @@ func TestSerializedBlockSerialization(t *testing.T) {
 	var sb2 SerializedBlock
 	doSerializationTest(&sb, &sb2, t)
 }
+
+func TestGetBlockSerialization(t *testing.T) {
+	gb := GetBlocksMsg{
+		Version: 2290,
+		BlockHeaderHashes: [][32]byte{
+			{0,1,1,5},
+			{0,1,1,4},
+			{4,2},
+		},
+		StopHash: [32]byte{55,87,79},
+	}
+	var new_msg GetBlocksMsg
+	doSerializationTest(&gb, &new_msg, t)
+}

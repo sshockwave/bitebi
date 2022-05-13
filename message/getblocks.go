@@ -2,7 +2,6 @@ package message
 
 import (
 	"errors"
-	"io"
 
 	"github.com/sshockwave/bitebi/utils"
 )
@@ -19,8 +18,7 @@ type GetBlocksMsg struct {
     StopHash [32]byte
 }
 var maxSizeExceededError = errors.New("maxSizeExceededError")
-func NewGetBlocksMsg(_reader io.Reader) (ret GetBlocksMsg, err error) {
-    reader := utils.NewBufReader(_reader)
+func (ret *GetBlocksMsg) LoadBuffer(reader utils.BufReader) (err error) {
     ret.Version, err = reader.ReadUint32()
     if err != nil {
         return
@@ -31,7 +29,7 @@ func NewGetBlocksMsg(_reader io.Reader) (ret GetBlocksMsg, err error) {
     }
     const MAX_SIZE uint64 = 0x02000000;
     if hash_count > MAX_SIZE {
-        return ret, maxSizeExceededError
+        return maxSizeExceededError
     }
     ret.BlockHeaderHashes = make([][32]byte, hash_count)
     for i := uint64(0); i < hash_count; i++ {
