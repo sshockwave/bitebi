@@ -230,9 +230,13 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 			}
 		}
 	}
-	{
+	{ // Commit success!
+		for _, v := range b.Block[startPos:] {
+			delete(b.Height, v.HeaderHash)
+		}
 		b.Block = b.Block[:startPos]
 		for i := 0; i < len(newBlocks); i++ {
+			b.Height[newBlocks[i].HeaderHash] = len(b.Block)
 			b.Block = append(b.Block, newBlocks[i])
 		}
 	}
