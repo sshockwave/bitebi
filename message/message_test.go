@@ -62,7 +62,6 @@ var tx1 Transaction = Transaction{
 				Hash:  [32]byte{33, 22, 0, 11},
 				Index: 12,
 			},
-			Script_bytes:     4,
 			Signature_script: []byte{22, 1, 1, 4},
 		},
 		{
@@ -70,7 +69,6 @@ var tx1 Transaction = Transaction{
 				Hash:  [32]byte{8, 2, 6, 3},
 				Index: 7,
 			},
-			Script_bytes:     5,
 			Signature_script: []byte{1, 2, 3, 4, 5},
 		},
 	},
