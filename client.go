@@ -75,10 +75,31 @@ func (c *CmdApp) Serve() {
 				new_c.peer = c.peer
 				go new_c.Serve()
 			}
-		case "transferAccount":
+		case "transfer":
 			// input extra
+			var fromAccount string
 			var accountName string
 			var amount int64
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: transfer <from> <to> <amount>")
+				continue
+			}
+			fromAccount = c.TokenScanner.Text()
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: transfer <from> <to> <amount>")
+				continue
+			}
+			accountName = c.TokenScanner.Text()
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: transfer <from> <to> <amount>")
+				continue
+			}
+			tmp, err := strconv.Atoi(c.TokenScanner.Text())
+			if err != nil {
+				log.Println("[ERROR] Input amount is not an integer")
+				continue
+			}
+			amount = int64(tmp)
 
 			totalPayment := int64(0)
 			tx_In := []message.TxIn{}
@@ -88,12 +109,12 @@ func (c *CmdApp) Serve() {
 				index := outPoint.Index
 				transaction := c.blockchain.TX[hash]
 				txOut := transaction.Tx_out[index]
-				if string(txOut.Pk_script) == c.name {
+				if string(txOut.Pk_script) == fromAccount {
 					value := txOut.Value
 					totalPayment += value
 					txIn := message.TxIn{
 						Previous_output:  outPoint,
-						Signature_script: []byte(c.name),
+						Signature_script: []byte(fromAccount),
 					}
 					tx_In = append(tx_In, txIn)
 				}
@@ -110,7 +131,7 @@ func (c *CmdApp) Serve() {
 						{Value: amount,
 							Pk_script: []byte(accountName)},
 						{Value: totalPayment - amount,
-							Pk_script: []byte(c.name)},
+							Pk_script: []byte(fromAccount)},
 					},
 					Lock_time: 0,
 				}
@@ -120,18 +141,27 @@ func (c *CmdApp) Serve() {
 			}
 
 		case "showbalance":
+			chosen_account := c.name
+			if c.TokenScanner.Scan() {
+				chosen_account = c.TokenScanner.Text()
+			}
 			// display the balance of an account
 			wallet := int64(0)
-			for key, _ := range c.blockchain.UTXO {
+			c.blockchain.Mtx.Lock()
+			for key, val := range c.blockchain.UTXO {
+				if val == false {
+					continue
+				}
 				hash := key.Hash
 				index := key.Index
 				transaction := c.blockchain.TX[hash]
 				txOut := transaction.Tx_out[index]
-				if string(txOut.Pk_script) == c.name {
+				if string(txOut.Pk_script) == chosen_account {
 					wallet += txOut.Value
 				}
 			}
-			fmt.Println("This client has", wallet, "money")
+			c.blockchain.Mtx.Unlock()
+			fmt.Println("Client ", chosen_account, " has ", wallet, " money")
 		case "serve":
 			if c.hasPeer {
 				log.Println("[ERROR] A server is already running!")
