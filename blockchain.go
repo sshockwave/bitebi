@@ -54,35 +54,20 @@ func (b *BlockChain) init() {
 
 // Verify if this tx is valid without examining the links and states
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
-	// Currently, this function only verified the wallet of input >= the wallet of output
-	in_count := len(tx.Tx_in)
-	tx_in := tx.Tx_in
-	out_count := len(tx.Tx_out)
-	tx_out := tx.Tx_out
-
 	wallet := int64(0) // wallet varification
-	for i := 0; i < in_count; i++ {
-		/*
-			ID := tx_in[i].Previous_output.Hash
-			index := tx_in[i].Previous_output.Index
-			transaction, ok := b.TX[ID]
-			if !ok {
-				return false
-			} else {
-				wallet += transaction.Tx_out[index].Value
-			}*/
-		valid, money := b.verifyTxIn(tx_in[i])
+	for i := 0; i < len(tx.Tx_in); i++ {
+		valid, money := b.verifyTxIn(tx.Tx_in[i])
 		if !valid {
 			return false
 		} else {
 			wallet += money
 		}
 	}
-	for i := 0; i < out_count; i++ {
-		wallet -= tx_out[i].Value
-	}
-	if wallet < 0 {
-		return false
+	for i := 0; i < len(tx.Tx_out); i++ {
+		wallet -= tx.Tx_out[i].Value
+		if wallet < 0 {
+			return false
+		}
 	}
 	return true
 }
