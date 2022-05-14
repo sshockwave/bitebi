@@ -24,7 +24,6 @@ type BlockChain struct {
 	// TODO: maintain this information
 	Height     map[[32]byte]int
 	UTXO       map[message.Outpoint]bool
-	ClientName string
 }
 
 func (b *BlockChain) verifyTxIn(in message.TxIn) (bool, int64) { // The first value returns whether it's valid, the second value returns its money
@@ -46,7 +45,6 @@ func (b *BlockChain) verifyTxIn(in message.TxIn) (bool, int64) { // The first va
 }
 
 func (b *BlockChain) init() {
-	b.ClientName = utils.RandomName()
 	b.TX = make(map[[32]byte]message.Transaction)
 	b.Mempool = make(map[[32]byte]message.Transaction)
 	b.Height = make(map[[32]byte]int)
@@ -242,7 +240,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	return true
 }
 
-func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer) {
+func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []byte) {
 	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
 
 	var rewardTransaction message.Transaction = message.Transaction{
@@ -251,7 +249,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer) {
 		Tx_out: []message.TxOut{
 			{
 				Value:     1, // How many bitcoins to use for reward?
-				Pk_script: []byte(b.ClientName),
+				Pk_script: Pk_script,
 			},
 		},
 		Lock_time: 0,

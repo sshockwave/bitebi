@@ -21,6 +21,7 @@ type CmdApp struct {
 	blockchain BlockChain
 	peer       *Peer
 	hasPeer    bool
+	name string
 }
 
 func NewCmdApp() (app CmdApp) {
@@ -28,7 +29,8 @@ func NewCmdApp() (app CmdApp) {
 	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
 	app.scanner = bufio.NewScanner(os.Stdin)
 	app.blockchain.init()
-	log.Printf("[INFO] App initialized with name: " + string(app.blockchain.ClientName))
+	app.name = utils.RandomName()
+	log.Printf("[INFO] App initialized with name: " + app.name)
 	return
 }
 
@@ -43,7 +45,7 @@ func (c *CmdApp) Serve() {
 		switch c.scanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, 0x03001000, c.peer)
+			go c.blockchain.mine(0, 0x03001000, c.peer, []byte(c.name))
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()
