@@ -13,3 +13,23 @@ func TestBitcoinEmptyHash(t *testing.T) {
 		t.Fatalf("Expect empty hash to be %v, %v found", emptyHash, hash)
 	}
 }
+
+func TestHashNBits(t *testing.T) {
+	hash := [32]byte{0,0,0,0,0,0x3f,0x22}
+	res := HasValidHash(hash, 0x07223f00)
+	if res != true {
+		t.Fatal()
+	}
+	res = HasValidHash(hash, 0x072233ff)
+	if res != false {
+		t.Fatal()
+	}
+	res = HasValidHash(hash, 0x06223f00)
+	if res != false {
+		t.Fatal()
+	}
+	res = HasValidHash(hash, 0x08223f00)
+	if res != true {
+		t.Fatal()
+	}
+}
