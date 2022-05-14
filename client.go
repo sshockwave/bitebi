@@ -91,18 +91,23 @@ func (c *CmdApp) Serve() {
 					break
 				}
 			}
-			transaction := message.Transaction{
-				Version: 0,
-				Tx_in:   tx_In,
-				Tx_out: []message.TxOut{
-					{Value: amount,
-						Pk_script: []byte(accountName)},
-					{Value: totalPayment - amount,
-						Pk_script: []byte(accountName)},
-				},
-				Lock_time: 0,
+
+			if totalPayment >= amount {
+				transaction := message.Transaction{
+					Version: 0,
+					Tx_in:   tx_In,
+					Tx_out: []message.TxOut{
+						{Value: amount,
+							Pk_script: []byte(accountName)},
+						{Value: totalPayment - amount,
+							Pk_script: []byte(c.name)},
+					},
+					Lock_time: 0,
+				}
+				c.peer.BroadcastTransaction(transaction)
+			} else {
+				fmt.Println("Warning: No transfer was made, because your don't have enough money.")
 			}
-			c.peer.BroadcastTransaction(transaction)
 
 		case "showbalance":
 			// display the balance of an account
