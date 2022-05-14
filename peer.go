@@ -503,6 +503,7 @@ func (p *Peer) NewConn(conn net.Conn) {
 	new_c.Conn = conn
 	new_c.peer = p
 	go new_c.Serve()
+	log.Println("[INFO] New connection from ", conn.RemoteAddr())
 }
 
 func (p *Peer) onAddr(data []byte) (err error) {
