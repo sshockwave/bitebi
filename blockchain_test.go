@@ -105,3 +105,7 @@ func TestAddBlock(t *testing.T) {
 		t.Fatalf("It should add this block, but it doesn't.")
 	}
 }
+
+func TestMine(t *testing.T) {
+
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/sshockwave/bitebi/message"
@@ -21,7 +22,25 @@ type BlockChain struct {
 	// TODO: maintain this information
 	Height     map[[32]byte]int
 	UTXO       map[message.Outpoint]bool
-	ClientName []byte
+	ClientName string
+}
+
+func (b *BlockChain) verifyTxIn(in message.TxIn) (bool, int64) { // The first value returns whether it's valid, the second value returns its money
+	previous_output := in.Previous_output
+	signature_scripts := in.Signature_script
+	_, ok := b.UTXO[previous_output]
+	if !ok {
+		return false, int64(0)
+	} else {
+		hash := previous_output.Hash
+		index := previous_output.Index
+		txOut := b.TX[hash].Tx_out[index]
+		if bytes.Compare(txOut.Pk_script, signature_scripts) != 0 {
+			return false, int64(0)
+		} else {
+			return true, txOut.Value
+		}
+	}
 }
 
 func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
@@ -33,13 +52,20 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 
 	wallet := int64(0) // wallet varification
 	for i := 0; i < in_count; i++ {
-		ID := tx_in[i].Previous_output.Hash
-		index := tx_in[i].Previous_output.Index
-		transaction, ok := b.TX[ID]
-		if !ok {
+		/*
+			ID := tx_in[i].Previous_output.Hash
+			index := tx_in[i].Previous_output.Index
+			transaction, ok := b.TX[ID]
+			if !ok {
+				return false
+			} else {
+				wallet += transaction.Tx_out[index].Value
+			}*/
+		valid, money := b.verifyTxIn(tx_in[i])
+		if !valid {
 			return false
 		} else {
-			wallet += transaction.Tx_out[index].Value
+			wallet += money
 		}
 	}
 	for i := 0; i < out_count; i++ {
@@ -160,7 +186,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer) {
 		Tx_out: []message.TxOut{
 			{
 				Value:     1, // How many bitcoins to use for reward?
-				Pk_script: b.ClientName,
+				Pk_script: []byte(b.ClientName),
 			},
 		},
 		Lock_time: 0,

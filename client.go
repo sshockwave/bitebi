@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/sshockwave/bitebi/message"
 	"log"
 	"net"
 	"os"
@@ -24,9 +25,14 @@ type CmdApp struct {
 
 func NewCmdApp() (app CmdApp) {
 	o, _ := os.Stdout.Stat()
+	name := utils.RandomName()
 	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
 	app.scanner = bufio.NewScanner(os.Stdin)
-	app.name = utils.RandomName()
+	app.name = name
+	app.blockchain = BlockChain{
+		Mining:     false,
+		ClientName: name,
+	}
 	log.Printf("[INFO] App initialized with name: " + app.name)
 	return
 }
@@ -61,10 +67,58 @@ func (c *CmdApp) Serve() {
 				new_c.peer = c.peer
 				go new_c.Serve()
 			}
-		case "createtx":
+		case "transferAccount":
 			// input extra
+			var accountName string
+			var amount int64
+
+			totalPayment := int64(0)
+			tx_In := []message.TxIn{}
+
+			for outPoint, _ := range c.blockchain.UTXO {
+				hash := outPoint.Hash
+				index := outPoint.Index
+				transaction := c.blockchain.TX[hash]
+				txOut := transaction.Tx_out[index]
+				if string(txOut.Pk_script) == c.name {
+					value := txOut.Value
+					totalPayment += value
+					txIn := message.TxIn{
+						Previous_output:  outPoint,
+						Signature_script: []byte(c.name),
+					}
+					tx_In = append(tx_In, txIn)
+				}
+				if totalPayment >= amount {
+					break
+				}
+			}
+			transaction := message.Transaction{
+				Version: 0,
+				Tx_in:   tx_In,
+				Tx_out: []message.TxOut{
+					{Value: amount,
+						Pk_script: []byte(accountName)},
+					{Value: totalPayment - amount,
+						Pk_script: []byte(accountName)},
+				},
+				Lock_time: 0,
+			}
+			c.peer.BroadcastTransaction(transaction)
+
 		case "showbalance":
 			// display the balance of an account
+			wallet := int64(0)
+			for key, _ := range c.blockchain.UTXO {
+				hash := key.Hash
+				index := key.Index
+				transaction := c.blockchain.TX[hash]
+				txOut := transaction.Tx_out[index]
+				if string(txOut.Pk_script) == c.name {
+					wallet += txOut.Value
+				}
+			}
+			fmt.Println("This client has", wallet, "money")
 		case "serve":
 			if c.hasPeer {
 				log.Println("[ERROR] A server is already running!")
