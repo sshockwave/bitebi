@@ -464,23 +464,33 @@ func (c *PeerConnection) doBlockSync() (err error) {
 	return
 }
 
+func (p *Peer) GetPeerList() (arr []net.TCPAddr) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	arr = make([]net.TCPAddr, len(p.conns))
+	for c := range p.conns {
+		addr, ok := c.Conn.RemoteAddr().(*net.TCPAddr)
+		if !ok {
+			log.Fatal("[FATAL] Should have used TCP connections")
+		}
+		arr = append(arr, *addr)
+	}
+	return
+}
+
 var unexpectedPayload = errors.New("unexpectedPayload")
 func (c *PeerConnection) onGetAddr(payload []byte) (err error) {
 	if len(payload) > 0 {
 		return unexpectedPayload
 	}
-	c.peer.lock.RLock()
-	arr := make([]message.NetworkIPAddress, len(c.peer.conns))
-	for c := range c.peer.conns {
-		addr, ok := c.Conn.RemoteAddr().(*net.TCPAddr)
-		if !ok {
-			log.Fatal("[FATAL] Should have used TCP connections")
-		}
+	peer_list := c.peer.GetPeerList()
+	arr := make([]message.NetworkIPAddress, len(peer_list))
+	for _, addr := range peer_list {
 		var ipaddr message.NetworkIPAddress
 		copy(ipaddr.Ipv6[:], addr.IP.To16())
+		ipaddr.Port = uint16(addr.Port)
 		arr = append(arr, ipaddr)
 	}
-	c.peer.lock.RUnlock()
 	addrmsg := message.AddrMsg{Addrs: arr}
 	var raw_data []byte
 	raw_data, err = utils.GetBytes(&addrmsg)
@@ -500,14 +510,11 @@ func (p *Peer) onAddr(data []byte) (err error) {
 	}
 	filtered := make([]message.NetworkIPAddress, 0)
 	p.lock.RLock()
+	peer_list := p.GetPeerList()
 	for _, v := range msg.Addrs {
 		// check if we are already connected
 		found := false
-		for c := range p.conns {
-			addr, ok := c.Conn.RemoteAddr().(*net.TCPAddr)
-			if !ok {
-				log.Fatal("[FATAL] Should have used TCP connections")
-			}
+		for _, addr := range peer_list {
 			if bytes.Compare(v.Ipv6[:], addr.IP.To16()) == 0 && v.Port == uint16(addr.Port) {
 				found = true
 				break

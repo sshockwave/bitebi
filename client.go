@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sshockwave/bitebi/message"
@@ -18,6 +19,7 @@ import (
 type CmdApp struct {
 	isTerminal bool
 	scanner    *bufio.Scanner
+	TokenScanner *bufio.Scanner
 	blockchain BlockChain
 	peer       *Peer
 	hasPeer    bool
@@ -42,7 +44,13 @@ func (c *CmdApp) Serve() {
 		if !c.scanner.Scan() {
 			break
 		}
-		switch c.scanner.Text() {
+		c.TokenScanner = bufio.NewScanner(strings.NewReader(c.scanner.Text()))
+		c.TokenScanner.Split(bufio.ScanWords)
+		if !c.TokenScanner.Scan() {
+			fmt.Println("Empty command.")
+			continue
+		}
+		switch c.TokenScanner.Text() {
 		case "mine":
 			// create a goroutine that mines
 			go c.blockchain.mine(0, 0x03001000, c.peer, []byte(c.name))
@@ -108,7 +116,7 @@ func (c *CmdApp) Serve() {
 				}
 				c.peer.BroadcastTransaction(transaction)
 			} else {
-				fmt.Println("Warning: No transfer was made, because your don't have enough money.")
+				log.Println("[ERROR] No transfer was made, because your don't have enough money.")
 			}
 
 		case "showbalance":
@@ -145,10 +153,12 @@ func (c *CmdApp) Serve() {
 				log.Println("[ERROR] Time parsing error: " + err.Error())
 			}
 			time.Sleep(time.Duration(t) * time.Second)
-		case "exit":
-			break
-		case "quit":
-			break
+		default:
+			log.Println("Unknown command: \"" + c.TokenScanner.Text() + "\"")
+		case "showpeer":
+			for _, addr := range c.peer.GetPeerList() {
+				fmt.Println(addr)
+			}
 		}
 	}
 	if c.scanner.Err() != nil {
