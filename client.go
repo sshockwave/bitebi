@@ -70,10 +70,7 @@ func (c *CmdApp) Serve() {
 			if err != nil {
 				log.Println("[ERROR] Dialing address " + addr + " failed")
 			} else {
-				var new_c PeerConnection
-				new_c.Conn = conn
-				new_c.peer = c.peer
-				go new_c.Serve()
+				c.peer.NewConn(conn)
 			}
 		case "transfer":
 			// input extra
@@ -135,6 +132,8 @@ func (c *CmdApp) Serve() {
 					},
 					Lock_time: 0,
 				}
+				c.blockchain.addTransaction(transaction)
+				c.blockchain.refreshMining()
 				c.peer.BroadcastTransaction(transaction)
 			} else {
 				log.Println("[ERROR] No transfer was made, because your don't have enough money.")

@@ -60,10 +60,7 @@ func (p *Peer) messageLoop() {
 			// handle error
 			break
 		}
-		c := new(PeerConnection)
-		c.Conn = conn
-		c.peer = p
-		go c.Serve()
+		p.NewConn(conn)
 	}
 }
 
@@ -501,6 +498,13 @@ func (c *PeerConnection) onGetAddr(payload []byte) (err error) {
 	return
 }
 
+func (p *Peer) NewConn(conn net.Conn) {
+	var new_c PeerConnection
+	new_c.Conn = conn
+	new_c.peer = p
+	go new_c.Serve()
+}
+
 func (p *Peer) onAddr(data []byte) (err error) {
 	reader := utils.NewBufReader(bytes.NewBuffer(data))
 	var msg message.AddrMsg
@@ -528,10 +532,7 @@ func (p *Peer) onAddr(data []byte) (err error) {
 					log.Printf("[WARNING] Connection to " + addr.String() + " failed.")
 					return
 				}
-				var new_c PeerConnection
-				new_c.Conn = conn
-				new_c.peer = p
-				new_c.Serve()
+				p.NewConn(conn)
 			}(net.TCPAddr{IP: v.Ipv6[:], Port: int(v.Port)})
 		}
 	}
