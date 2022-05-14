@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/sshockwave/bitebi/message"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/sshockwave/bitebi/message"
 
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
@@ -20,20 +21,14 @@ type CmdApp struct {
 	blockchain BlockChain
 	peer       *Peer
 	hasPeer    bool
-	name       string
 }
 
 func NewCmdApp() (app CmdApp) {
 	o, _ := os.Stdout.Stat()
-	name := utils.RandomName()
 	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
 	app.scanner = bufio.NewScanner(os.Stdin)
-	app.name = name
-	app.blockchain = BlockChain{
-		Mining:     false,
-		ClientName: name,
-	}
-	log.Printf("[INFO] App initialized with name: " + app.name)
+	app.blockchain.init()
+	log.Printf("[INFO] App initialized with name: " + string(app.blockchain.ClientName))
 	return
 }
 
@@ -48,10 +43,13 @@ func (c *CmdApp) Serve() {
 		switch c.scanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, 1, c.peer)
+			go c.blockchain.mine(0, 0x03001000, c.peer)
 		case "stopmining":
 			// stop all mining processes
-			c.blockchain.Mining = false
+			c.blockchain.PauseMining()
+		case "resumemining":
+			// stop all mining processes
+			c.blockchain.ResumeMining()
 		case "peer": // sk
 			// add an address of a peer
 			if !c.scanner.Scan() {

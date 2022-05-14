@@ -71,7 +71,7 @@ func (b *Block) LoadBuffer(reader utils.BufReader) (err error) {
 
 var blockHashNotValid = errors.New("blockHashNotValid")
 
-func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transaction, nBits uint32, nonce uint32) (Block, error) {
+func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transaction, nBits uint32, nonce uint32) Block {
 	var block Block
 	block.Version = version
 	block.Previous_block_header_hash = previous_block_header_hash
@@ -80,19 +80,7 @@ func CreateBlock(version int32, previous_block_header_hash [32]byte, TS []Transa
 	block.NBits = nBits
 	block.Nonce = nonce
 
-	hash, _ := utils.GetHash(&block)
-	valid := false
-	for i := 0; i < int(nBits); i++ {
-		if hash[i/8] <= 255>>(i%8+1) {
-			valid = true
-		}
-	}
-
-	if valid == true {
-		return block, nil
-	} else {
-		return block, blockHashNotValid
-	}
+	return block
 }
 
 // https://developer.bitcoin.org/reference/block_chain.html#serialized-blocks
