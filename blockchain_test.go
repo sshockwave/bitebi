@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/sshockwave/bitebi/message"
 	"sync"
 	"testing"
+
+	"github.com/sshockwave/bitebi/message"
 
 	"github.com/sshockwave/bitebi/utils"
 )
@@ -33,10 +34,9 @@ var blockchain BlockChain = BlockChain{
 	Mtx:        sync.Mutex{},
 	TX:         map[[32]byte]message.Transaction{},
 	Mempool:    map[[32]byte]message.Transaction{},
-	Mining:     true,
+	MineVersion: 1,
 	Height:     map[[32]byte]int{},
 	UTXO:       map[message.Outpoint]bool{},
-	ClientName: []byte{12, 45},
 }
 
 var tx1 message.Transaction = message.Transaction{
@@ -47,7 +47,6 @@ var tx1 message.Transaction = message.Transaction{
 				Hash:  [32]byte{33, 22, 0, 11},
 				Index: 12,
 			},
-			Script_bytes:     4,
 			Signature_script: []byte{22, 1, 1, 4},
 		},
 		{
@@ -55,7 +54,6 @@ var tx1 message.Transaction = message.Transaction{
 				Hash:  [32]byte{8, 2, 6, 3},
 				Index: 7,
 			},
-			Script_bytes:     5,
 			Signature_script: []byte{1, 2, 3, 4, 5},
 		},
 	},
@@ -93,7 +91,7 @@ func TestAddTransaction(t *testing.T) {
 }
 
 func TestVerifyBlock(t *testing.T) {
-	if blockchain.verifyBlock(0, sblk1) {
+	if blockchain.verifyBlock(sblk1) {
 		t.Fatalf("It should return false, but it returns true")
 	}
 }
