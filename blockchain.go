@@ -16,14 +16,14 @@ type BlockChain struct {
 	// All known transactions
 	TX map[[32]byte]message.Transaction
 	// The transactions that have not been added to a block
-	Mempool map[[32]byte]message.Transaction
+	Mempool     map[[32]byte]message.Transaction
 	MineVersion int
 	MineBarrier sync.Mutex
 	// The height of blocks
 	// used to examine the existence of a block
 	// TODO: maintain this information
-	Height     map[[32]byte]int
-	UTXO       map[message.Outpoint]bool
+	Height map[[32]byte]int
+	UTXO   map[message.Outpoint]bool
 }
 
 func (b *BlockChain) verifyTxIn(in message.TxIn) (bool, int64) { // The first value returns whether it's valid, the second value returns its money
@@ -49,6 +49,23 @@ func (b *BlockChain) init() {
 	b.Mempool = make(map[[32]byte]message.Transaction)
 	b.Height = make(map[[32]byte]int)
 	b.UTXO = make(map[message.Outpoint]bool)
+
+	TS := []message.Transaction{}
+	var block message.Block = message.Block{
+		Version:                    0,
+		Previous_block_header_hash: [32]byte{},
+		Merkle_root_hash:           message.MakeMerkleTree(TS),
+		Time:                       0,
+		NBits:                      0x03001000,
+		Nonce:                      0,
+	}
+
+	blockHash, _ := utils.GetHash(&block)
+	b.Block = []message.SerializedBlock{
+		{Header: block,
+			HeaderHash: blockHash,
+			Txns:       []message.Transaction{}},
+	}
 	// TODO initialize genesis block
 }
 
@@ -91,7 +108,7 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 func (b *BlockChain) confirmTransaction(tx message.Transaction) bool {
 	for i := 0; i < len(tx.Tx_in); i++ { // input verification
 		ans, ok := b.UTXO[tx.Tx_in[i].Previous_output]
-		if !ok || !ans || !b.verifyTransaction(tx){
+		if !ok || !ans || !b.verifyTransaction(tx) {
 			// failed, roll back
 			for j := 0; j < i; j++ {
 				b.UTXO[tx.Tx_in[j].Previous_output] = true
@@ -163,11 +180,11 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 		}
 	}
 	// Consensus: always use longest chain
-	if !(startPos <= len(b.Block) && startPos + len(newBlocks) > len(b.Block)) {
+	if !(startPos <= len(b.Block) && startPos+len(newBlocks) > len(b.Block)) {
 		return false
 	}
 	// verify block connect hash
-	if bytes.Compare(newBlocks[0].Header.Previous_block_header_hash[:], b.Block[startPos - 1].HeaderHash[:]) != 0 {
+	if bytes.Compare(newBlocks[0].Header.Previous_block_header_hash[:], b.Block[startPos-1].HeaderHash[:]) != 0 {
 		return false
 	}
 	for i := range newBlocks[1:] {
