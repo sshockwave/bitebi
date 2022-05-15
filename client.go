@@ -5,14 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sshockwave/bitebi/message"
-
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
 )
@@ -36,6 +35,7 @@ func NewCmdApp() (app CmdApp) {
 	if inputfile == "-" {
 		app.LineScanner = bufio.NewScanner(os.Stdin)
 	} else {
+		app.isTerminal = false
 		f, err := os.Open(inputfile)
 		if err != nil {
 			log.Fatalf("[ERROR] cannot open " + inputfile + ", " + err.Error())
@@ -54,6 +54,14 @@ func (c *CmdApp) Serve() {
 			fmt.Print(">> ")
 		}
 		if !c.LineScanner.Scan() {
+			if c.LineScanner.Err() != nil {
+				log.Println("[ERROR] During scanning, an error occurred: " + c.LineScanner.Err().Error())
+			} else if !c.isTerminal {
+				log.Println("[INFO] Input completed. Entering infinite loop.")
+				var wg sync.WaitGroup
+				wg.Add(1)
+				wg.Wait()
+			}
 			break
 		}
 		c.TokenScanner = bufio.NewScanner(strings.NewReader(c.LineScanner.Text()))
@@ -78,7 +86,7 @@ func (c *CmdApp) Serve() {
 				break
 			}
 			addr := c.TokenScanner.Text()
-			conn, err := net.Dial("tcp", addr)
+			conn, err := c.peer.Dial(addr)
 			if err != nil {
 				log.Println("[ERROR] Dialing address " + addr + " failed")
 			} else {
@@ -187,7 +195,7 @@ func (c *CmdApp) Serve() {
 					}
 				}
 				var err error
-				c.peer, err = NewPeer(&c.blockchain, nc, "0.0.0.0", -1)
+				c.peer, err = NewPeer(&c.blockchain, nc, "127.0.0.1", -1)
 				if err != nil {
 					fmt.Println("[ERROR] " + err.Error())
 				} else {
@@ -210,9 +218,6 @@ func (c *CmdApp) Serve() {
 				fmt.Println(addr)
 			}
 		}
-	}
-	if c.LineScanner.Err() != nil {
-		log.Println("[ERROR] During scanning, an error occurred: " + c.LineScanner.Err().Error())
 	}
 }
 
