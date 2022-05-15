@@ -150,7 +150,7 @@ func (b *BlockChain) confirmTransaction(tx message.Transaction, isCoinbase bool)
 func (b *BlockChain) cancelTransaction(tx message.Transaction, isCoinbase bool) {
 	for i := 0; i < len(tx.Tx_in) && !isCoinbase; i++ {
 		ans, ok := b.UTXO[tx.Tx_in[i].Previous_output]
-		if !ok || !ans {
+		if !ok || ans {
 			log.Fatalf("[ERROR] the transaction should have been confirmed")
 		}
 		b.UTXO[tx.Tx_in[i].Previous_output] = true
