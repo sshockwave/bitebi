@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 
+	reuse "github.com/libp2p/go-reuseport"
 	"github.com/sshockwave/bitebi/message"
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
@@ -27,6 +28,14 @@ type Peer struct {
 	orphans Orphans
 }
 
+func ConnectionToAddr(c net.Addr) net.TCPAddr {
+	addr, ok := c.(*net.TCPAddr)
+	if !ok {
+		log.Fatalf("[ERROR] Listener should have been tcp")
+	}
+	return *addr
+}
+
 func (c *PeerConnection) Serve() {
 	c.peer.lock.Lock()
 	c.peer.conns[c] = void_null
@@ -36,7 +45,10 @@ func (c *PeerConnection) Serve() {
 	c.doBlockSync()
 	for {
 		command, payload, err := c.readMessage()
-		if err != nil {
+		if err == io.EOF {
+			log.Printf("[INFO] Connection to %v closed.", c.Conn.RemoteAddr())
+			break
+		} else if err != nil {
 			log.Println("[ERROR] " + err.Error())
 			break
 		}
@@ -60,10 +72,7 @@ func (p *Peer) messageLoop() {
 			// handle error
 			break
 		}
-		c := new(PeerConnection)
-		c.Conn = conn
-		c.peer = p
-		go c.Serve()
+		p.NewConn(conn)
 	}
 }
 
@@ -71,16 +80,21 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p *Pe
 	p = new(Peer)
 	p.Chain = chain
 	p.Config = cfg
+	p.conns = make(map[*PeerConnection]void)
 	if port < 0 {
 		port = cfg.DefaultPort
 	}
-	p.ln, err = net.Listen("tcp", host + ":" + strconv.Itoa(port))
+	p.ln, err = reuse.Listen("tcp", host + ":" + strconv.Itoa(port))
 	if err != nil {
 		return
 	}
 	log.Println("[INFO] Server listening on " + p.ln.Addr().String())
 	go p.messageLoop()
 	return
+}
+
+func (p *Peer) Dial(addr string) (net.Conn, error) {
+	return reuse.Dial("tcp", p.ln.Addr().String(), addr)
 }
 
 func (p *Peer) BroadcastTransaction(tx message.Transaction) (err error) {
@@ -190,7 +204,7 @@ func (c *PeerConnection) dispatchMessage(command string, payload []byte) (err er
 	case "getaddr":
 		c.onGetAddr(payload)
 	case "addr":
-		c.peer.onAddr(payload)
+		c.onAddr(payload)
 	case "addrv2":
 		// Not yet in plan
 	case "filterload":
@@ -468,12 +482,10 @@ func (p *Peer) GetPeerList() (arr []net.TCPAddr) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	arr = make([]net.TCPAddr, len(p.conns))
+	i := 0
 	for c := range p.conns {
-		addr, ok := c.Conn.RemoteAddr().(*net.TCPAddr)
-		if !ok {
-			log.Fatal("[FATAL] Should have used TCP connections")
-		}
-		arr = append(arr, *addr)
+		arr[i] = ConnectionToAddr(c.Conn.RemoteAddr())
+		i++
 	}
 	return
 }
@@ -485,11 +497,9 @@ func (c *PeerConnection) onGetAddr(payload []byte) (err error) {
 	}
 	peer_list := c.peer.GetPeerList()
 	arr := make([]message.NetworkIPAddress, len(peer_list))
-	for _, addr := range peer_list {
-		var ipaddr message.NetworkIPAddress
-		copy(ipaddr.Ipv6[:], addr.IP.To16())
-		ipaddr.Port = uint16(addr.Port)
-		arr = append(arr, ipaddr)
+	for i, addr := range peer_list {
+		copy(arr[i].Ipv6[:], addr.IP.To16())
+		arr[i].Port = uint16(addr.Port)
 	}
 	addrmsg := message.AddrMsg{Addrs: arr}
 	var raw_data []byte
@@ -501,7 +511,16 @@ func (c *PeerConnection) onGetAddr(payload []byte) (err error) {
 	return
 }
 
-func (p *Peer) onAddr(data []byte) (err error) {
+func (p *Peer) NewConn(conn net.Conn) {
+	var new_c PeerConnection
+	new_c.Conn = conn
+	new_c.peer = p
+	go new_c.Serve()
+	log.Println("[INFO] New connection from ", conn.RemoteAddr())
+}
+
+func (c *PeerConnection) onAddr(data []byte) (err error) {
+	p := c.peer
 	reader := utils.NewBufReader(bytes.NewBuffer(data))
 	var msg message.AddrMsg
 	err = msg.LoadBuffer(reader)
@@ -521,18 +540,26 @@ func (p *Peer) onAddr(data []byte) (err error) {
 			}
 		}
 		if !found {
-			filtered = append(filtered, v)
-			go func(addr net.TCPAddr) {
-				conn, err := net.DialTCP("tcp", nil, &addr)
-				if err != nil {
-					log.Printf("[WARNING] Connection to " + addr.String() + " failed.")
-					return
-				}
-				var new_c PeerConnection
-				new_c.Conn = conn
-				new_c.peer = p
-				new_c.Serve()
-			}(net.TCPAddr{IP: v.Ipv6[:], Port: int(v.Port)})
+			addr := ConnectionToAddr(p.ln.Addr())
+			if bytes.Compare(v.Ipv6[:], addr.IP.To16()) == 0 && v.Port == uint16(addr.Port) {
+				found = true
+			}
+		}
+		if !found {
+			addr := ConnectionToAddr(c.Conn.LocalAddr())
+			if bytes.Compare(v.Ipv6[:], addr.IP.To16()) == 0 && v.Port == uint16(addr.Port) {
+				found = true
+			}
+		}
+		if !found {
+			tcpaddr := net.TCPAddr{IP: v.Ipv6[:], Port: int(v.Port)}
+			conn, err := p.Dial(tcpaddr.String())
+			if err != nil {
+				log.Printf("[WARNING] Connection to " + tcpaddr.String() + " failed.")
+			} else {
+				filtered = append(filtered, v)
+				p.NewConn(conn)
+			}
 		}
 	}
 	if len(filtered) > 0 {

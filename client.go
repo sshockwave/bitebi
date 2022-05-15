@@ -2,23 +2,23 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sshockwave/bitebi/message"
-
 	"github.com/sshockwave/bitebi/p2p"
 	"github.com/sshockwave/bitebi/utils"
 )
 
 type CmdApp struct {
 	isTerminal bool
-	scanner    *bufio.Scanner
+	LineScanner    *bufio.Scanner
 	TokenScanner *bufio.Scanner
 	blockchain BlockChain
 	peer       *Peer
@@ -28,8 +28,20 @@ type CmdApp struct {
 
 func NewCmdApp() (app CmdApp) {
 	o, _ := os.Stdout.Stat()
+	var inputfile string
+	flag.StringVar(&inputfile, "input", "-", "Input File")
+	flag.Parse()
 	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
-	app.scanner = bufio.NewScanner(os.Stdin)
+	if inputfile == "-" {
+		app.LineScanner = bufio.NewScanner(os.Stdin)
+	} else {
+		app.isTerminal = false
+		f, err := os.Open(inputfile)
+		if err != nil {
+			log.Fatalf("[ERROR] cannot open " + inputfile + ", " + err.Error())
+		}
+		app.LineScanner = bufio.NewScanner(f)
+	}
 	app.blockchain.init()
 	app.name = utils.RandomName()
 	log.Printf("[INFO] App initialized with name: " + app.name)
@@ -41,10 +53,18 @@ func (c *CmdApp) Serve() {
 		if c.isTerminal {
 			fmt.Print(">> ")
 		}
-		if !c.scanner.Scan() {
+		if !c.LineScanner.Scan() {
+			if c.LineScanner.Err() != nil {
+				log.Println("[ERROR] During scanning, an error occurred: " + c.LineScanner.Err().Error())
+			} else if !c.isTerminal {
+				log.Println("[INFO] Input completed. Entering infinite loop.")
+				var wg sync.WaitGroup
+				wg.Add(1)
+				wg.Wait()
+			}
 			break
 		}
-		c.TokenScanner = bufio.NewScanner(strings.NewReader(c.scanner.Text()))
+		c.TokenScanner = bufio.NewScanner(strings.NewReader(c.LineScanner.Text()))
 		c.TokenScanner.Split(bufio.ScanWords)
 		if !c.TokenScanner.Scan() {
 			fmt.Println("Empty command.")
@@ -62,18 +82,15 @@ func (c *CmdApp) Serve() {
 			c.blockchain.ResumeMining()
 		case "peer": // sk
 			// add an address of a peer
-			if !c.scanner.Scan() {
+			if !c.TokenScanner.Scan() {
 				break
 			}
-			addr := c.scanner.Text()
-			conn, err := net.Dial("tcp", addr)
+			addr := c.TokenScanner.Text()
+			conn, err := c.peer.Dial(addr)
 			if err != nil {
 				log.Println("[ERROR] Dialing address " + addr + " failed")
 			} else {
-				var new_c PeerConnection
-				new_c.Conn = conn
-				new_c.peer = c.peer
-				go new_c.Serve()
+				c.peer.NewConn(conn)
 			}
 		case "transfer":
 			// input extra
@@ -135,6 +152,8 @@ func (c *CmdApp) Serve() {
 					},
 					Lock_time: 0,
 				}
+				c.blockchain.addTransaction(transaction)
+				c.blockchain.refreshMining()
 				c.peer.BroadcastTransaction(transaction)
 			} else {
 				log.Println("[ERROR] No transfer was made, because your don't have enough money.")
@@ -166,8 +185,17 @@ func (c *CmdApp) Serve() {
 			if c.hasPeer {
 				log.Println("[ERROR] A server is already running!")
 			} else {
+				nc := p2p.GetMainnet()
+				if c.TokenScanner.Scan() {
+					var err error
+					nc.DefaultPort, err = strconv.Atoi(c.TokenScanner.Text())
+					if err != nil {
+						log.Println("[ERROR] the port number should be an integer")
+						continue
+					}
+				}
 				var err error
-				c.peer, err = NewPeer(&c.blockchain, p2p.GetMainnet(), "0.0.0.0", -1)
+				c.peer, err = NewPeer(&c.blockchain, nc, "127.0.0.1", -1)
 				if err != nil {
 					fmt.Println("[ERROR] " + err.Error())
 				} else {
@@ -175,10 +203,10 @@ func (c *CmdApp) Serve() {
 				}
 			}
 		case "sleep":
-			if !c.scanner.Scan() {
+			if !c.TokenScanner.Scan() {
 				break
 			}
-			t, err := strconv.Atoi(c.scanner.Text())
+			t, err := strconv.Atoi(c.TokenScanner.Text())
 			if err != nil {
 				log.Println("[ERROR] Time parsing error: " + err.Error())
 			}
@@ -190,9 +218,6 @@ func (c *CmdApp) Serve() {
 				fmt.Println(addr)
 			}
 		}
-	}
-	if c.scanner.Err() != nil {
-		log.Println("[ERROR] During scanning, an error occurred: " + c.scanner.Err().Error())
 	}
 }
 

@@ -20,6 +20,8 @@ type Orphans struct {
 
 func (o *Orphans) AddBlock(blk *message.SerializedBlock) {
 	hash, _ := utils.GetHash(&blk.Header)
+	o.Chain.Mtx.Lock()
+	defer o.Chain.Mtx.Unlock()
 	node := o.nodes[hash]
 	if node == nil {
 		node = new(orphanNode)
@@ -27,14 +29,12 @@ func (o *Orphans) AddBlock(blk *message.SerializedBlock) {
 	}
 	node.blk = blk
 	prev_hash := node.blk.Header.Previous_block_header_hash
-	o.Chain.Mtx.Lock()
 	par := o.nodes[prev_hash]
 	if par == nil {
 		par = new(orphanNode)
 		o.nodes[prev_hash] = par
 	}
 	par.successors[hash] = void_null
-	o.Chain.Mtx.Unlock()
 }
 
 func (o *Orphans) RemoveBlock(hash [32]byte, delay uint64) {
