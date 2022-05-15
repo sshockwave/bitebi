@@ -83,7 +83,7 @@ func (c *CmdApp) Serve() {
 		case "mine":
 			// create a goroutine that mines
 			// Examples: easiest(0x20ffffff), hardest(0x03000000)
-			go c.blockchain.mine(0, 0x1E0fffff, c.peer, []byte(c.name))
+			go c.blockchain.mine(0, 0x1E08ffff, c.peer, []byte(c.name))
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()
@@ -98,7 +98,7 @@ func (c *CmdApp) Serve() {
 			addr := c.TokenScanner.Text()
 			conn, err := c.peer.Dial(addr)
 			if err != nil {
-				log.Printf("[ERROR] Dialing address %v failed", addr)
+				log.Printf("[ERROR] Dialing address %v failed: %v", addr, err)
 			} else {
 				c.peer.NewConn(conn)
 			}
@@ -207,7 +207,7 @@ func (c *CmdApp) Serve() {
 					}
 				}
 				var err error
-				c.peer, err = NewPeer(&c.blockchain, nc, "127.0.0.1", -1)
+				c.peer, err = NewPeer(&c.blockchain, nc, "0.0.0.0", -1)
 				if err != nil {
 					fmt.Println("[ERROR]", err)
 				} else {
