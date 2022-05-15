@@ -49,9 +49,11 @@ func NewCmdApp() (app CmdApp) {
 }
 
 func (c *CmdApp) Serve() {
-	fmt.Println("Welcome!")
-	fmt.Println("To get started, start a peer by 'serve <port>'")
-	fmt.Println("Then add some peer with 'peer <addr>'")
+	if c.isTerminal {
+		fmt.Println("Welcome!")
+		fmt.Println("To get started, start a peer by 'serve <port>'")
+		fmt.Println("Then add some peer with 'peer <addr>'")
+	}
 	for {
 		if c.isTerminal {
 			fmt.Print(">> ")
@@ -80,7 +82,7 @@ func (c *CmdApp) Serve() {
 		switch c.TokenScanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, 0x1E100000, c.peer, []byte(c.name))
+			go c.blockchain.mine(0, 0x1E001000, c.peer, []byte(c.name))
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()

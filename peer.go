@@ -90,6 +90,7 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p *Pe
 	}
 	log.Println("[INFO] Server listening on " + p.ln.Addr().String())
 	go p.messageLoop()
+	p.orphans.Chain = chain
 	return
 }
 
