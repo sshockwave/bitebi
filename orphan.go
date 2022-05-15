@@ -18,20 +18,31 @@ type Orphans struct {
 	nodes map[[32]byte]*orphanNode
 }
 
+func (o *Orphans) Init(chain *BlockChain) {
+	o.Chain = chain
+	o.nodes = make(map[[32]byte]*orphanNode)
+}
+
+func NewOrphanNode() *orphanNode {
+	var o orphanNode
+	o.successors = make(map[[32]byte]void)
+	return &o
+}
+
 func (o *Orphans) AddBlock(blk *message.SerializedBlock) {
 	hash, _ := utils.GetHash(&blk.Header)
 	o.Chain.Mtx.Lock()
 	defer o.Chain.Mtx.Unlock()
 	node := o.nodes[hash]
 	if node == nil {
-		node = new(orphanNode)
+		node = NewOrphanNode()
 		o.nodes[hash] = node
 	}
 	node.blk = blk
 	prev_hash := node.blk.Header.Previous_block_header_hash
 	par := o.nodes[prev_hash]
 	if par == nil {
-		par = new(orphanNode)
+		par = NewOrphanNode()
 		o.nodes[prev_hash] = par
 	}
 	par.successors[hash] = void_null
@@ -43,17 +54,23 @@ func (o *Orphans) RemoveBlock(hash [32]byte, delay uint64) {
 	}
 	o.Chain.Mtx.Lock()
 	defer o.Chain.Mtx.Unlock()
-	node := o.nodes[hash]
-	if node == nil {
+	node, ok := o.nodes[hash]
+	if !ok {
 		return
 	}
+	if node.blk == nil {
+		if len(node.successors) == 0 {
+			log.Fatalln("[FATAL] node.blk == nil should indicate that the block is only required by others")
+		}
+		return
+	}
+	prev_hash := node.blk.Header.Previous_block_header_hash
 	node.blk = nil
 	if len(node.successors) == 0 {
 		delete(o.nodes, hash)
 	}
-	prev_hash := node.blk.Header.Previous_block_header_hash
 	par := o.nodes[prev_hash]
-	delete(par.successors, node.blk.HeaderHash)
+	delete(par.successors, hash)
 	if par.blk == nil && len(par.successors) == 0 {
 		delete(o.nodes, prev_hash)
 	}

@@ -46,7 +46,7 @@ func (c *PeerConnection) Serve() {
 	for {
 		command, payload, err := c.readMessage()
 		if err == io.EOF {
-			log.Printf("[INFO] Connection to %v closed.", c.Conn.RemoteAddr())
+			log.Printf("[INFO] Connection to %v ended.", c.Conn.RemoteAddr())
 			break
 		} else if err != nil {
 			log.Println("[ERROR] " + err.Error())
@@ -81,6 +81,7 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p *Pe
 	p.Chain = chain
 	p.Config = cfg
 	p.conns = make(map[*PeerConnection]void)
+	p.orphans.Init(chain)
 	if port < 0 {
 		port = cfg.DefaultPort
 	}
@@ -90,7 +91,6 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p *Pe
 	}
 	log.Println("[INFO] Server listening on " + p.ln.Addr().String())
 	go p.messageLoop()
-	p.orphans.Chain = chain
 	return
 }
 
@@ -439,7 +439,7 @@ func (c *PeerConnection) onBlock(data []byte) (err error) {
 		hei, ok := c.peer.Chain.Height[chain[0].Header.Previous_block_header_hash]
 		if ok {
 			// not orphaned, check if longer than current chain
-			ok = hei + len(chain) > len(c.peer.Chain.Block)
+			ok = hei + 1 + len(chain) > len(c.peer.Chain.Block)
 		}
 		c.peer.Chain.Mtx.Unlock()
 		if ok {
@@ -453,7 +453,6 @@ func (c *PeerConnection) onBlock(data []byte) (err error) {
 			for _, v := range chain {
 				c.peer.orphans.RemoveBlock(v.HeaderHash, 0)
 			}
-		} else {
 		}
 	} else {
 		err = c.doBlockSync()

@@ -82,7 +82,7 @@ func (c *CmdApp) Serve() {
 		switch c.TokenScanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, 0x1E001000, c.peer, []byte(c.name))
+			go c.blockchain.mine(0, 0x1E050000, c.peer, []byte(c.name))
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()

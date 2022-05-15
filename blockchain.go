@@ -67,6 +67,7 @@ func (b *BlockChain) init() {
 		log.Fatalln(err)
 	}
 	b.Block = []message.SerializedBlock{genesis_full}
+	b.Height[genesis_full.HeaderHash] = 0
 }
 
 // Verify if this tx is valid without examining the links and states
@@ -334,7 +335,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 		}
 		hash, err := utils.GetHash(&block)
 		if err == nil && utils.HasValidHash(hash, nBits) {
-			log.Println("[INFO] A new block is successfully mined!!!!")
+			log.Println("[INFO] (", string(Pk_script), ") A new block is successfully mined!!!!")
 			var serializedBlock message.SerializedBlock
 			serializedBlock, err = message.CreateSerialBlock(block, TS)
 			if err != nil {
