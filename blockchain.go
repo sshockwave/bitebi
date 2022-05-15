@@ -215,7 +215,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 		return false
 	}
 	for i := range newBlocks[1:] {
-		if bytes.Compare(newBlocks[i].Header.Previous_block_header_hash[:], newBlocks[i-1].HeaderHash[:]) != 0 {
+		if bytes.Compare(newBlocks[i + 1].Header.Previous_block_header_hash[:], newBlocks[i].HeaderHash[:]) != 0 {
 			return false
 		}
 	}

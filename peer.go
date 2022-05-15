@@ -279,11 +279,9 @@ func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
 	for _, hash := range msg.BlockHeaderHashes {
 		if h, ok := c.peer.Chain.Height[hash]; ok {
 			commonHeight = h
-			c.peer.Chain.Mtx.Unlock()
 			break
 		}
 	}
-	c.peer.Chain.Mtx.Unlock()
 	inv := make([]message.Inventory, 0)
 	cnt := 0
 	for i := commonHeight + 1; i < len(c.peer.Chain.Block); i++ {
@@ -296,6 +294,7 @@ func (c *PeerConnection) onGetBlocks(data []byte) (err error) {
 			break
 		}
 	}
+	c.peer.Chain.Mtx.Unlock()
 	invmsg := message.InvMsg{Inv: inv}
 	invbytes, err := utils.GetBytes(&invmsg)
 	if err != nil {

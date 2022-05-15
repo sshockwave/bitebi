@@ -109,7 +109,7 @@ func (o *Orphans) GetLongestChain(hash [32]byte) (stk []*message.SerializedBlock
 		}
 		stk = append(stk, node.blk)
 	}
-	for i, j := 0, 0; i < j; i, j = i + 1, j - 1 {
+	for i, j := 0, len(stk) - 1; i < j; i, j = i + 1, j - 1 {
 		stk[i], stk[j] = stk[j], stk[i]
 	}
 	return stk
