@@ -268,7 +268,11 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 			height := len(b.Block)
 			b.Height[newBlocks[i].HeaderHash] = height
 			b.Block = append(b.Block, newBlocks[i])
-			log.Println("[INFO] New block at height ", height, ": ", hex.EncodeToString(newBlocks[i].HeaderHash[:]))
+			outputHash := newBlocks[i].HeaderHash
+			for a, b := 0, 31; a < b; a, b = a + 1, b - 1 {
+				outputHash[a], outputHash[b] = outputHash[b], outputHash[a]
+			}
+			log.Printf("[INFO] New block at height %v: %v", hex.EncodeToString(outputHash[:]), height)
 		}
 	}
 	go b.refreshMining()
@@ -313,7 +317,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 			TS = []message.Transaction{rewardTransaction}
 			b.addTransaction(rewardTransaction)
 			for hash, value := range b.Mempool {
-				if b.confirmTransaction(value, false) {
+				if b.verifyTransaction(value, false) && b.confirmTransaction(value, false) {
 					TS = append(TS, value)
 				} else {
 					failed = append(failed, hash)
@@ -335,7 +339,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 		}
 		hash, err := utils.GetHash(&block)
 		if err == nil && utils.HasValidHash(hash, nBits) {
-			log.Println("[INFO] (", string(Pk_script), ") A new block is successfully mined!!!!")
+			log.Printf("[INFO] (%v) A new block is successfully mined!!!!", string(Pk_script))
 			var serializedBlock message.SerializedBlock
 			serializedBlock, err = message.CreateSerialBlock(block, TS)
 			if err != nil {

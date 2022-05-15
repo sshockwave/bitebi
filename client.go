@@ -60,7 +60,7 @@ func (c *CmdApp) Serve() {
 		}
 		if !c.LineScanner.Scan() {
 			if c.LineScanner.Err() != nil {
-				log.Println("[ERROR] During scanning, an error occurred: " + c.LineScanner.Err().Error())
+				log.Println("[ERROR] During scanning, an error occurred:", c.LineScanner.Err().Error())
 			} else if !c.isTerminal {
 				log.Println("[INFO] Input completed. Entering infinite loop.")
 				var wg sync.WaitGroup
@@ -82,7 +82,8 @@ func (c *CmdApp) Serve() {
 		switch c.TokenScanner.Text() {
 		case "mine":
 			// create a goroutine that mines
-			go c.blockchain.mine(0, 0x1E050000, c.peer, []byte(c.name))
+			// Examples: easiest(0x20ffffff), hardest(0x03000000)
+			go c.blockchain.mine(0, 0x1E0fffff, c.peer, []byte(c.name))
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()
@@ -97,7 +98,7 @@ func (c *CmdApp) Serve() {
 			addr := c.TokenScanner.Text()
 			conn, err := c.peer.Dial(addr)
 			if err != nil {
-				log.Println("[ERROR] Dialing address " + addr + " failed")
+				log.Printf("[ERROR] Dialing address %v failed", addr)
 			} else {
 				c.peer.NewConn(conn)
 			}
@@ -149,16 +150,18 @@ func (c *CmdApp) Serve() {
 				}
 			}
 
+			oput := []message.TxOut{{Value: amount, Pk_script: []byte(accountName)}}
+			if totalPayment > amount {
+				oput = append(oput, message.TxOut{
+					Value: totalPayment - amount,
+					Pk_script: []byte(fromAccount),
+				})
+			}
 			if totalPayment >= amount {
 				transaction := message.Transaction{
 					Version: 0,
 					Tx_in:   tx_In,
-					Tx_out: []message.TxOut{
-						{Value: amount,
-							Pk_script: []byte(accountName)},
-						{Value: totalPayment - amount,
-							Pk_script: []byte(fromAccount)},
-					},
+					Tx_out:  oput,
 					Lock_time: 0,
 				}
 				c.blockchain.addTransaction(transaction)
@@ -189,7 +192,7 @@ func (c *CmdApp) Serve() {
 				}
 			}
 			c.blockchain.Mtx.Unlock()
-			fmt.Println("Client ", chosen_account, " has ", wallet, " money")
+			log.Printf("Client %v has %v satoshis", chosen_account, wallet)
 		case "serve":
 			if c.hasPeer {
 				log.Println("[ERROR] A server is already running!")
@@ -206,22 +209,28 @@ func (c *CmdApp) Serve() {
 				var err error
 				c.peer, err = NewPeer(&c.blockchain, nc, "127.0.0.1", -1)
 				if err != nil {
-					fmt.Println("[ERROR] " + err.Error())
+					fmt.Println("[ERROR]", err)
 				} else {
 					c.hasPeer = true
 				}
 			}
+		case "name":
+			if !c.TokenScanner.Scan() {
+				log.Println("[WARN] name command needs a name")
+			}
+			c.name = c.TokenScanner.Text()
+			c.blockchain.refreshMining()
 		case "sleep":
 			if !c.TokenScanner.Scan() {
 				break
 			}
 			t, err := strconv.Atoi(c.TokenScanner.Text())
 			if err != nil {
-				log.Println("[ERROR] Time parsing error: " + err.Error())
+				log.Println("[ERROR] Time parsing error:", err.Error())
 			}
 			time.Sleep(time.Duration(t) * time.Second)
 		default:
-			log.Println("Unknown command: \"" + c.TokenScanner.Text() + "\"")
+			log.Printf("Unknown command: \"%v\"", c.TokenScanner.Text())
 		case "showpeer":
 			for _, addr := range c.peer.GetPeerList() {
 				fmt.Println(addr)

@@ -49,12 +49,12 @@ func (c *PeerConnection) Serve() {
 			log.Printf("[INFO] Connection to %v ended.", c.Conn.RemoteAddr())
 			break
 		} else if err != nil {
-			log.Println("[ERROR] " + err.Error())
+			log.Println("[ERROR]", err)
 			break
 		}
 		err = c.dispatchMessage(command, payload)
 		if err != nil {
-			log.Println("[ERROR] " + err.Error())
+			log.Println("[ERROR]", err)
 			break
 		}
 	}
@@ -68,8 +68,7 @@ func (p *Peer) messageLoop() {
 	for {
 		conn, err := p.ln.Accept()
 		if err != nil {
-			log.Println("[ERROR] Accepting TCP connections: " + err.Error())
-			// handle error
+			log.Println("[ERROR] Accepting TCP connections:", err)
 			break
 		}
 		p.NewConn(conn)
@@ -89,7 +88,7 @@ func NewPeer(chain *BlockChain, cfg p2p.NetConfig, host string, port int) (p *Pe
 	if err != nil {
 		return
 	}
-	log.Println("[INFO] Server listening on " + p.ln.Addr().String())
+	log.Println("[INFO] Server listening on", p.ln.Addr())
 	go p.messageLoop()
 	return
 }
@@ -102,7 +101,7 @@ func (p *Peer) BroadcastTransaction(tx message.Transaction) (err error) {
 	var b []byte
 	b, err = utils.GetBytes(&tx)
 	if err != nil {
-		log.Printf("[ERROR] Serializing tx: " + err.Error())
+		log.Println("[ERROR] Serializing tx:", err)
 		return
 	}
 	p.lock.RLock()
@@ -117,7 +116,7 @@ func (p *Peer) BroadcastBlock(blk message.SerializedBlock) (err error) {
 	var b []byte
 	b, err = utils.GetBytes(&blk)
 	if err != nil {
-		log.Printf("[ERROR] Serializing tx: " + err.Error())
+		log.Println("[ERROR] Serializing tx:", err)
 		return
 	}
 	p.lock.RLock()
@@ -336,7 +335,7 @@ func (c *PeerConnection) onInv(data []byte) (err error) {
 				retmsg.Inv = append(retmsg.Inv, v)
 			}
 		default:
-			log.Printf("[ERROR] Unknown inv type: " + strconv.Itoa(int(v.Type)))
+			log.Println("[ERROR] Unknown inv type: ", v.Type)
 		}
 	}
 	c.peer.Chain.Mtx.Unlock()
@@ -515,7 +514,7 @@ func (p *Peer) NewConn(conn net.Conn) {
 	new_c.Conn = conn
 	new_c.peer = p
 	go new_c.Serve()
-	log.Println("[INFO] New connection from ", conn.RemoteAddr())
+	log.Println("[INFO] New connection from", conn.RemoteAddr())
 }
 
 func (c *PeerConnection) onAddr(data []byte) (err error) {
@@ -554,7 +553,7 @@ func (c *PeerConnection) onAddr(data []byte) (err error) {
 			tcpaddr := net.TCPAddr{IP: v.Ipv6[:], Port: int(v.Port)}
 			conn, err := p.Dial(tcpaddr.String())
 			if err != nil {
-				log.Printf("[WARNING] Connection to " + tcpaddr.String() + " failed.")
+				log.Printf("[WARNING] Connection to %v failed.", tcpaddr)
 			} else {
 				filtered = append(filtered, v)
 				p.NewConn(conn)
