@@ -56,7 +56,7 @@ func CreateTransaction(version int32, tx_in []TxIn, tx_out []TxOut, lock_time ui
 
 const HashL = 32
 
-func MakeMerkleTree(TS []Transaction) (res [HashL]byte) {
+func MakeMerkleTree(TS []Transaction) (res [32]byte) {
 	var tmp [HashL]byte
 	hashes := make([]byte, len(TS)*HashL)
 	for i := range TS {
@@ -65,7 +65,7 @@ func MakeMerkleTree(TS []Transaction) (res [HashL]byte) {
 	}
 	return MakeMerkleTreeFromHashes(hashes)
 }
-func MakeMerkleTreeFromHashes(hashes []byte) (res [HashL]byte) {
+func MakeMerkleTreeFromHashes(hashes []byte) (res [32]byte) {
 	for n := len(hashes) / HashL; n > 1; n = (n + 1) / 2 {
 		for i := 0; i < n/2; i++ {
 			res = utils.Sha256Twice(hashes[2*i*HashL : (2*i+2)*HashL])
