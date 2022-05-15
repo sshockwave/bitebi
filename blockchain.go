@@ -10,6 +10,8 @@ import (
 	"github.com/sshockwave/bitebi/utils"
 )
 
+const CoinBaseReward = 1
+
 type BlockChain struct {
 	// All blocks
 	Block []message.SerializedBlock
@@ -22,7 +24,6 @@ type BlockChain struct {
 	MineBarrier sync.Mutex
 	// The height of blocks
 	// used to examine the existence of a block
-	// TODO: maintain this information
 	Height map[[32]byte]int
 	UTXO   map[message.Outpoint]bool
 }
@@ -51,8 +52,8 @@ func (b *BlockChain) init() {
 	b.Height = make(map[[32]byte]int)
 	b.UTXO = make(map[message.Outpoint]bool)
 
-	TS := []message.Transaction{}
-	var block message.Block = message.Block{
+	TS := []message.Transaction{{}}
+	genesis := message.Block{
 		Version:                    0,
 		Previous_block_header_hash: [32]byte{},
 		Merkle_root_hash:           message.MakeMerkleTree(TS),
@@ -61,17 +62,15 @@ func (b *BlockChain) init() {
 		Nonce:                      0,
 	}
 
-	blockHash, _ := utils.GetHash(&block)
-	b.Block = []message.SerializedBlock{
-		{Header: block,
-			HeaderHash: blockHash,
-			Txns:       []message.Transaction{}},
+	genesis_full, err := message.CreateSerialBlock(genesis, TS)
+	if err != nil {
+		log.Fatalln(err)
 	}
-	// TODO initialize genesis block
+	b.Block = []message.SerializedBlock{genesis_full}
 }
 
 // Verify if this tx is valid without examining the links and states
-func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
+func (b *BlockChain) verifyTransaction(tx message.Transaction, isCoinbase bool) bool {
 	wallet := int64(0) // wallet varification
 	for i := 0; i < len(tx.Tx_in); i++ {
 		valid, money := b.verifyTxIn(tx.Tx_in[i])
@@ -81,6 +80,28 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction) bool {
 			wallet += money
 		}
 	}
+	for i := 0; i < len(tx.Tx_out); i++ {
+		wallet -= tx.Tx_out[i].Value
+		if wallet < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (b *BlockChain) verifyCoinbase(tx message.Transaction, height int) bool {
+	if len(tx.Tx_in) != 1 {
+		return false
+	}
+	if len(tx.Tx_in[0].Signature_script) != 4 {
+		return false
+	}
+	hgt_bytes := tx.Tx_in[0].Signature_script[1:]
+	new_height := int(hgt_bytes[0]) + (int(hgt_bytes[1]) << 8) + (int(hgt_bytes[2]) << 16)
+	if new_height != height {
+		return false
+	}
+	wallet := int64(CoinBaseReward) // wallet varification
 	for i := 0; i < len(tx.Tx_out); i++ {
 		wallet -= tx.Tx_out[i].Value
 		if wallet < 0 {
@@ -106,10 +127,11 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 	}
 }
 
-func (b *BlockChain) confirmTransaction(tx message.Transaction) bool {
-	for i := 0; i < len(tx.Tx_in); i++ { // input verification
+func (b *BlockChain) confirmTransaction(tx message.Transaction, isCoinbase bool) bool {
+	// input verification should have been done in verify
+	for i := 0; i < len(tx.Tx_in) && !isCoinbase; i++ { // input verification
 		ans, ok := b.UTXO[tx.Tx_in[i].Previous_output]
-		if !ok || !ans || !b.verifyTransaction(tx) {
+		if !ok || !ans {
 			// failed, roll back
 			for j := 0; j < i; j++ {
 				b.UTXO[tx.Tx_in[j].Previous_output] = true
@@ -124,8 +146,8 @@ func (b *BlockChain) confirmTransaction(tx message.Transaction) bool {
 }
 
 // This transaction should already be confirmed
-func (b *BlockChain) cancelTransaction(tx message.Transaction) {
-	for i := 0; i < len(tx.Tx_in); i++ {
+func (b *BlockChain) cancelTransaction(tx message.Transaction, isCoinbase bool) {
+	for i := 0; i < len(tx.Tx_in) && !isCoinbase; i++ {
 		ans, ok := b.UTXO[tx.Tx_in[i].Previous_output]
 		if !ok || !ans {
 			log.Fatalf("[ERROR] the transaction should have been confirmed")
@@ -147,7 +169,7 @@ func (b *BlockChain) delTransaction(tx message.Transaction) {
 }
 
 // Verify if this block is valid without examining the links and states
-func (b *BlockChain) verifyBlock(sBlock message.SerializedBlock) bool {
+func (b *BlockChain) verifyBlock(sBlock message.SerializedBlock, height int) bool {
 	newBlock := sBlock.Header
 	//newBlockHash := sBlock.HeaderHash
 	newTransactions := sBlock.Txns
@@ -160,8 +182,11 @@ func (b *BlockChain) verifyBlock(sBlock message.SerializedBlock) bool {
 		return false
 	}
 
-	for _, transaction := range newTransactions {
-		if b.verifyTransaction(transaction) == false {
+	if !b.verifyCoinbase(newTransactions[0], height) {
+		return false
+	}
+	for _, transaction := range newTransactions[1:] {
+		if b.verifyTransaction(transaction, false) == false {
 			return false
 		}
 	}
@@ -195,7 +220,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	}
 	// verify block content
 	for i := range newBlocks {
-		if !b.verifyBlock(newBlocks[i]) {
+		if !b.verifyBlock(newBlocks[i], startPos + i) {
 			return false
 		}
 	}
@@ -203,27 +228,27 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	// Permanent change, needs roll back
 	for _, v := range b.Block[startPos:] {
 		for i := range v.Txns {
-			b.cancelTransaction(v.Txns[i])
+			b.cancelTransaction(v.Txns[i], i == 0)
 		}
 	}
 	// Add new chain
 	// Permanent change, needs roll back
 	for i, v := range newBlocks {
 		for j := range v.Txns {
-			ret := b.confirmTransaction(v.Txns[j])
+			ret := b.confirmTransaction(v.Txns[j], j == 0)
 			if !ret {
 				// invalid transaction, roll back all
 				for ; j >= 0; j-- {
-					b.cancelTransaction(v.Txns[j])
+					b.cancelTransaction(v.Txns[j], j == 0)
 				}
 				for _, v := range newBlocks[:i] {
 					for j := range v.Txns {
-						b.cancelTransaction(v.Txns[j])
+						b.cancelTransaction(v.Txns[j], j == 0)
 					}
 				}
 				for _, v := range b.Block[startPos:] {
 					for j := range v.Txns {
-						ret := b.confirmTransaction(v.Txns[j])
+						ret := b.confirmTransaction(v.Txns[j], j == 0)
 						if !ret {
 							log.Fatalf("[ERROR] the blockchain should have been valid")
 						}
@@ -250,64 +275,74 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 }
 
 func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []byte) {
-	previous_block_header_hash := b.Block[len(b.Block)-1].HeaderHash
-
 	var rewardTransaction message.Transaction = message.Transaction{
 		Version: 0,
 		Tx_in:   []message.TxIn{},
 		Tx_out: []message.TxOut{
 			{
-				Value:     1, // How many bitcoins to use for reward?
+				Value:     CoinBaseReward, // How many bitcoins to use for reward?
 				Pk_script: Pk_script,
 			},
 		},
 		Lock_time: 0,
 	}
-
 	var TS []message.Transaction
 	ver := -1
-
-	block := message.CreateBlock(version, previous_block_header_hash, TS, nBits, 0)
+	var block message.Block
 	for {
 		if ver < b.MineVersion {
+			failed := make([][32]byte, 0)
 			b.MineBarrier.Lock() // sync progress
 			b.MineBarrier.Unlock()
-			TS = []message.Transaction{rewardTransaction}
 			b.Mtx.Lock()
 			ver = b.MineVersion
-			failed := make([][32]byte, 0)
+			height := len(b.Block)
+			// https://developer.bitcoin.org/reference/transactions.html?highlight=coinbase
+			rewardTransaction.Tx_in = []message.TxIn{
+				{
+					Previous_output: message.Outpoint{Index: 0xffff},
+					Signature_script: []byte{
+						0x03, // number of bytes in the height
+						byte(height & 255),
+						byte((height >> 8) & 255),
+						byte((height >> 16) & 255),
+					},
+				},
+			}
+			TS = []message.Transaction{rewardTransaction}
+			b.addTransaction(rewardTransaction)
 			for hash, value := range b.Mempool {
-				if b.confirmTransaction(value) {
+				if b.confirmTransaction(value, false) {
 					TS = append(TS, value)
 				} else {
 					failed = append(failed, hash)
 				}
 			}
 			// rollback
-			for _, value := range TS {
-				b.cancelTransaction(value)
+			for _, value := range TS[1:] {
+				b.cancelTransaction(value, false)
 			}
+			b.delTransaction(rewardTransaction)
 			// useless tx
 			for _, hash := range failed {
 				delete(b.Mempool, hash)
 			}
-			defer b.Mtx.Unlock()
+			previous_block_header_hash := b.Block[height-1].HeaderHash
+			b.Mtx.Unlock()
+			block = message.CreateBlock(version, previous_block_header_hash, TS, nBits, 0)
 			block.Nonce = 0
 		}
 		hash, err := utils.GetHash(&block)
 		if err == nil && utils.HasValidHash(hash, nBits) {
-			//newBlock := []message.Block{block}
+			log.Println("[INFO] A new block is successfully mined!!!!")
 			var serializedBlock message.SerializedBlock
-			serializedBlock.Header = block
-			serializedBlock.HeaderHash, _ = utils.GetHash(&block)
-			serializedBlock.Txns = TS
-
-			var newBlock []message.SerializedBlock
-			newBlock = append(newBlock, serializedBlock)
-			b.addBlock(len(b.Block), newBlock)
-
+			serializedBlock, err = message.CreateSerialBlock(block, TS)
+			if err != nil {
+				log.Fatalf("[FATAL] Block creation failed")
+				continue
+			}
+			b.addBlock(len(b.Block), []message.SerializedBlock{serializedBlock})
 			peer.BroadcastBlock(serializedBlock)
-			go b.refreshMining()
 		}
 		block.Nonce++
 	}
