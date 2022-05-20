@@ -17,13 +17,13 @@ import (
 )
 
 type CmdApp struct {
-	isTerminal bool
-	LineScanner    *bufio.Scanner
+	isTerminal   bool
+	LineScanner  *bufio.Scanner
 	TokenScanner *bufio.Scanner
-	blockchain BlockChain
-	peer       *Peer
-	hasPeer    bool
-	name string
+	blockchain   BlockChain
+	peer         *Peer
+	hasPeer      bool
+	name         string
 }
 
 func NewCmdApp() (app CmdApp) {
@@ -153,15 +153,15 @@ func (c *CmdApp) Serve() {
 			oput := []message.TxOut{{Value: amount, Pk_script: []byte(accountName)}}
 			if totalPayment > amount {
 				oput = append(oput, message.TxOut{
-					Value: totalPayment - amount,
+					Value:     totalPayment - amount,
 					Pk_script: []byte(fromAccount),
 				})
 			}
 			if totalPayment >= amount {
 				transaction := message.Transaction{
-					Version: 0,
-					Tx_in:   tx_In,
-					Tx_out:  oput,
+					Version:   0,
+					Tx_in:     tx_In,
+					Tx_out:    oput,
 					Lock_time: 0,
 				}
 				c.blockchain.addTransaction(transaction)
@@ -248,8 +248,8 @@ func (c *CmdApp) Serve() {
 				block_cnt := len(c.blockchain.Block)
 				unconfirmed_tx_cnt := len(c.blockchain.Mempool)
 				confirmed_tx_cnt := len(c.blockchain.TX) - unconfirmed_tx_cnt
-				avgtx = exp_alpha * avgtx + (1 - exp_alpha) * float64(len(c.blockchain.TX) - last_cnt)
-				last_cnt = unconfirmed_tx_cnt
+				avgtx = exp_alpha*avgtx + (1-exp_alpha)*float64(len(c.blockchain.TX)-last_cnt)
+				last_cnt = len(c.blockchain.TX)
 				c.blockchain.Mtx.Unlock()
 				fmt.Printf(
 					"Stats: %v nodes; %v blocks; %v tx; %v unconfirmed tx; %v new tx / sec\r",
