@@ -235,6 +235,32 @@ func (c *CmdApp) Serve() {
 			for _, addr := range c.peer.GetPeerList() {
 				fmt.Println(addr)
 			}
+		case "stat":
+			exp_alpha := 0.8
+			avgtx := float64(0)
+			last_cnt := 0
+			time_int := 200 // ms
+			for {
+				c.peer.lock.Lock()
+				peer_cnt := len(c.peer.conns) + 1
+				c.peer.lock.Unlock()
+				c.blockchain.Mtx.Lock()
+				block_cnt := len(c.blockchain.Block)
+				unconfirmed_tx_cnt := len(c.blockchain.Mempool)
+				confirmed_tx_cnt := len(c.blockchain.TX) - unconfirmed_tx_cnt
+				avgtx = exp_alpha * avgtx + (1 - exp_alpha) * float64(len(c.blockchain.TX) - last_cnt)
+				last_cnt = unconfirmed_tx_cnt
+				c.blockchain.Mtx.Unlock()
+				fmt.Printf(
+					"Stats: %v nodes; %v blocks; %v tx; %v unconfirmed tx; %v new tx / sec\r",
+					peer_cnt,
+					block_cnt,
+					confirmed_tx_cnt,
+					unconfirmed_tx_cnt,
+					avgtx,
+				)
+				time.Sleep(time.Duration(time_int) * time.Millisecond)
+			}
 		}
 	}
 }
