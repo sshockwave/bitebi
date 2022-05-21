@@ -164,7 +164,9 @@ func (c *CmdApp) Serve() {
 					Tx_out:    oput,
 					Lock_time: 0,
 				}
+				c.blockchain.Mtx.Lock()
 				c.blockchain.addTransaction(transaction)
+				c.blockchain.Mtx.Unlock()
 				c.blockchain.refreshMining()
 				c.peer.BroadcastTransaction(transaction)
 			} else {

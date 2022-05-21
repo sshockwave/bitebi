@@ -366,9 +366,11 @@ func (c *PeerConnection) onTx(data []byte) (err error) {
 	}
 	c.peer.Chain.Mtx.Lock()
 	_, flag = c.peer.Chain.TX[hash]
-	c.peer.Chain.Mtx.Unlock()
 	if !flag {
 		c.peer.Chain.addTransaction(tx)
+	}
+	c.peer.Chain.Mtx.Unlock()
+	if !flag {
 		err = c.peer.BroadcastTransaction(tx)
 	}
 	return
