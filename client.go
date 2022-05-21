@@ -31,7 +31,7 @@ func NewCmdApp() (app CmdApp) {
 	var inputfile string
 	flag.StringVar(&inputfile, "input", "-", "Input File")
 	flag.Parse()
-	app.isTerminal = (o.Mode() & os.ModeCharDevice) == os.ModeCharDevice
+	app.isTerminal = (o.Mode() & os.ModeCharDevice) != 0
 	if inputfile == "-" {
 		app.LineScanner = bufio.NewScanner(os.Stdin)
 	} else {
