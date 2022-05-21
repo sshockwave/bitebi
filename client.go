@@ -27,7 +27,7 @@ type CmdApp struct {
 }
 
 func NewCmdApp() (app CmdApp) {
-	o, _ := os.Stdout.Stat()
+	o, _ := os.Stdin.Stat()
 	var inputfile string
 	flag.StringVar(&inputfile, "input", "-", "Input File")
 	flag.Parse()
@@ -220,6 +220,7 @@ func (c *CmdApp) Serve() {
 			}
 			c.name = c.TokenScanner.Text()
 			c.blockchain.refreshMining()
+			log.Printf("[INFO] name changed to %v . New miners will use this name.\n", c.name)
 		case "sleep":
 			if !c.TokenScanner.Scan() {
 				break
