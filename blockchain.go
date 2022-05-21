@@ -215,13 +215,13 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 		return false
 	}
 	for i := range newBlocks[1:] {
-		if bytes.Compare(newBlocks[i + 1].Header.Previous_block_header_hash[:], newBlocks[i].HeaderHash[:]) != 0 {
+		if bytes.Compare(newBlocks[i+1].Header.Previous_block_header_hash[:], newBlocks[i].HeaderHash[:]) != 0 {
 			return false
 		}
 	}
 	// verify block content
 	for i := range newBlocks {
-		if !b.verifyBlock(newBlocks[i], startPos + i) {
+		if !b.verifyBlock(newBlocks[i], startPos+i) {
 			return false
 		}
 	}
@@ -269,7 +269,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 			b.Height[newBlocks[i].HeaderHash] = height
 			b.Block = append(b.Block, newBlocks[i])
 			outputHash := newBlocks[i].HeaderHash
-			for a, b := 0, 31; a < b; a, b = a + 1, b - 1 {
+			for a, b := 0, 31; a < b; a, b = a+1, b-1 {
 				outputHash[a], outputHash[b] = outputHash[b], outputHash[a]
 			}
 			log.Printf("[INFO] New block at height %v: %v", hex.EncodeToString(outputHash[:]), height)
@@ -296,7 +296,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 	var block message.Block
 	for {
 		if ver < b.MineVersion {
-			failed := make([][32]byte, 0)
+			failed := make([]message.Transaction, 0)
 			b.MineBarrier.Lock() // sync progress
 			b.MineBarrier.Unlock()
 			b.Mtx.Lock()
@@ -316,11 +316,11 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 			}
 			TS = []message.Transaction{rewardTransaction}
 			b.addTransaction(rewardTransaction)
-			for hash, value := range b.Mempool {
+			for _, value := range b.Mempool {
 				if b.verifyTransaction(value, false) && b.confirmTransaction(value, false) {
 					TS = append(TS, value)
 				} else {
-					failed = append(failed, hash)
+					failed = append(failed, value)
 				}
 			}
 			// rollback
@@ -329,8 +329,8 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 			}
 			b.delTransaction(rewardTransaction)
 			// useless tx
-			for _, hash := range failed {
-				delete(b.Mempool, hash)
+			for _, value := range failed {
+				b.delTransaction(value)
 			}
 			previous_block_header_hash := b.Block[height-1].HeaderHash
 			b.Mtx.Unlock()
