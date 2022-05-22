@@ -94,6 +94,28 @@ func (o *Orphans) dfsLongChain(hash [32]byte) (stk []*message.SerializedBlock) {
 	return
 }
 
+func (o *Orphans) IsOrphaned(hash [32]byte) bool {
+	o.Chain.Mtx.Lock()
+	defer o.Chain.Mtx.Unlock()
+	node, ok := o.nodes[hash]
+	if !ok {
+		return true
+	}
+	for {
+		node, ok = o.nodes[node.blk.Header.Previous_block_header_hash]
+		if !ok {
+			log.Fatal("[FATAL] Assertion failure, previous node should exist when the orhpaned block exists")
+		}
+		if node.blk == nil {
+			return false
+		}
+		_, ok = o.Chain.Height[node.blk.HeaderHash]
+		if ok {
+			return true
+		}
+	}
+}
+
 func (o *Orphans) GetLongestChain(hash [32]byte) (stk []*message.SerializedBlock) {
 	o.Chain.Mtx.Lock()
 	defer o.Chain.Mtx.Unlock()
@@ -103,7 +125,17 @@ func (o *Orphans) GetLongestChain(hash [32]byte) (stk []*message.SerializedBlock
 	}
 	stk = o.dfsLongChain(hash)
 	for {
-		node, ok = o.nodes[node.blk.Header.Previous_block_header_hash]
+		if len(stk) == 0 {
+			return
+		}
+		_, ok := o.Chain.Height[stk[len(stk) - 1].HeaderHash]
+		if !ok {
+			break
+		}
+		stk = stk[:len(stk) - 1]
+	}
+	for {
+		node, ok = o.nodes[stk[len(stk) - 1].Header.Previous_block_header_hash]
 		if !ok {
 			log.Fatal("[FATAL] Assertion failure, previous node should exist when the orhpaned block exists")
 		}

@@ -320,17 +320,6 @@ func (b *BlockChain) sortedMempool() (ans [][32]byte) {
 }
 
 func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []byte) {
-	var rewardTransaction message.Transaction = message.Transaction{
-		Version: 0,
-		Tx_in:   []message.TxIn{},
-		Tx_out: []message.TxOut{
-			{
-				Value:     CoinBaseReward, // How many bitcoins to use for reward?
-				Pk_script: Pk_script,
-			},
-		},
-		Lock_time: 0,
-	}
 	var TS []message.Transaction
 	ver := -1
 	var block message.Block
@@ -342,6 +331,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 			ver = b.MineVersion
 			height := len(b.Block)
 			// https://developer.bitcoin.org/reference/transactions.html?highlight=coinbase
+			var rewardTransaction message.Transaction
 			rewardTransaction.Tx_in = []message.TxIn{
 				{
 					Previous_output: message.Outpoint{Index: 0xffff},
