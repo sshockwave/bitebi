@@ -87,6 +87,9 @@ func (o *Orphans) dfsLongChain(hash [32]byte) (stk []*message.SerializedBlock) {
 			stk = tmp_stk
 		}
 	}
+	if node.blk == nil {
+		log.Fatal("[FATAL] The node should not have been discarded")
+	}
 	stk = append(stk, node.blk)
 	return
 }
@@ -105,6 +108,10 @@ func (o *Orphans) GetLongestChain(hash [32]byte) (stk []*message.SerializedBlock
 			log.Fatal("[FATAL] Assertion failure, previous node should exist when the orhpaned block exists")
 		}
 		if node.blk == nil {
+			break
+		}
+		_, ok = o.Chain.Height[node.blk.HeaderHash]
+		if ok {
 			break
 		}
 		stk = append(stk, node.blk)
