@@ -19,3 +19,6 @@ func GetTestnet() NetConfig {
 func GetRegtest() NetConfig {
     return NetConfig{18444, [4]byte{0xfa, 0xbf, 0xb5, 0xda}, 0x207fffff};
 }
+func GetBitebinet() NetConfig {
+    return NetConfig{8333, [4]byte{0xf9, 0xbe, 0xb4, 0xd9}, 0x1E08ffff};
+}

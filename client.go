@@ -83,7 +83,7 @@ func (c *CmdApp) Serve() {
 		case "mine":
 			// create a goroutine that mines
 			// Examples: easiest(0x20ffffff), hardest(0x03000000)
-			go c.blockchain.mine(0, 0x1E08ffff, c.peer, []byte(c.name))
+			go c.blockchain.mine(0, c.peer.Config.MaxNBits, c.peer, []byte(c.name))
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()
@@ -132,7 +132,10 @@ func (c *CmdApp) Serve() {
 			tx_In := []message.TxIn{}
 
 			c.blockchain.Mtx.Lock()
-			for outPoint, _ := range c.blockchain.UTXO {
+			for outPoint, val := range c.blockchain.UTXO {
+				if !val {
+					continue
+				}
 				hash := outPoint.Hash
 				index := outPoint.Index
 				transaction := c.blockchain.TX[hash]
@@ -200,7 +203,7 @@ func (c *CmdApp) Serve() {
 			if c.hasPeer {
 				log.Println("[ERROR] A server is already running!")
 			} else {
-				nc := p2p.GetMainnet()
+				nc := p2p.GetBitebinet()
 				if c.TokenScanner.Scan() {
 					var err error
 					nc.DefaultPort, err = strconv.Atoi(c.TokenScanner.Text())
@@ -240,10 +243,10 @@ func (c *CmdApp) Serve() {
 				fmt.Println(addr)
 			}
 		case "stat":
-			exp_alpha := 0.8
-			avgtx := float64(0)
 			last_cnt := 0
 			time_int := 200 // ms
+			tot_cnt := 0
+			loop_cnt := 0
 			for {
 				c.peer.lock.Lock()
 				peer_cnt := len(c.peer.conns) + 1
@@ -251,9 +254,12 @@ func (c *CmdApp) Serve() {
 				c.blockchain.Mtx.Lock()
 				block_cnt := len(c.blockchain.Block)
 				unconfirmed_tx_cnt := len(c.blockchain.Mempool)
-				confirmed_tx_cnt := len(c.blockchain.TX) - unconfirmed_tx_cnt
-				avgtx = exp_alpha*avgtx + (1-exp_alpha)*float64(len(c.blockchain.TX)-last_cnt)
-				last_cnt = len(c.blockchain.TX)
+				confirmed_tx_cnt := len(c.blockchain.TX) - unconfirmed_tx_cnt - len(c.blockchain.Block) + 1
+				if confirmed_tx_cnt > last_cnt {
+					tot_cnt += confirmed_tx_cnt - last_cnt
+				}
+				last_cnt = confirmed_tx_cnt
+				loop_cnt += 1
 				c.blockchain.Mtx.Unlock()
 				fmt.Printf(
 					"Stats: %v nodes; %v blocks; %v tx; %v unconfirmed tx; %v new tx / sec\r",
@@ -261,7 +267,7 @@ func (c *CmdApp) Serve() {
 					block_cnt,
 					confirmed_tx_cnt,
 					unconfirmed_tx_cnt,
-					avgtx,
+					float64(tot_cnt) / float64(loop_cnt) * 1000 / float64(time_int),
 				)
 				time.Sleep(time.Duration(time_int) * time.Millisecond)
 			}
