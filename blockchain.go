@@ -279,6 +279,46 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 	return true
 }
 
+func (b *BlockChain) sortedMempool() (ans [][32]byte) {
+	succ := make(map[[32]byte][][32]byte)
+	indeg := make(map[[32]byte]int)
+	for hash := range b.Mempool {
+		succ[hash] = [][32]byte{}
+	}
+	for hash, value := range b.Mempool {
+		curdeg := 0
+		for _, v := range value.Tx_in {
+			arr, ok := succ[v.Previous_output.Hash]
+			if ok {
+				curdeg += 1
+				succ[v.Previous_output.Hash] = append(arr, hash)
+			}
+		}
+		if curdeg == 0 {
+			ans = append(ans, hash)
+		} else {
+			indeg[hash] = curdeg
+		}
+	}
+	if ans == nil {
+		return [][32]byte{}
+	}
+	for i := 0; i < len(ans); i++ {
+		hash := ans[i]
+		for _, v := range succ[hash] {
+			indeg[v] -= 1
+			if indeg[v] == 0 {
+				delete(indeg, v)
+				ans = append(ans, v)
+			}
+		}
+	}
+	if len(ans) < len(b.Mempool) {
+		log.Fatalln("[FATAL] Loop detected in unconfirmed txns. This is hardly possible.")
+	}
+	return
+}
+
 func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []byte) {
 	var rewardTransaction message.Transaction = message.Transaction{
 		Version: 0,
@@ -296,7 +336,6 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 	var block message.Block
 	for {
 		if ver < b.MineVersion {
-			failed := make([]message.Transaction, 0)
 			b.MineBarrier.Lock() // sync progress
 			b.MineBarrier.Unlock()
 			b.Mtx.Lock()
@@ -316,11 +355,12 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 			}
 			TS = []message.Transaction{rewardTransaction}
 			b.addTransaction(rewardTransaction)
-			for _, value := range b.Mempool {
+			for _, hash := range b.sortedMempool() {
+				value := b.Mempool[hash]
 				if b.verifyTransaction(value, false) && b.confirmTransaction(value, false) {
 					TS = append(TS, value)
 				} else {
-					failed = append(failed, value)
+					b.delTransaction(value)
 				}
 			}
 			// rollback
@@ -328,10 +368,6 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 				b.cancelTransaction(value, false)
 			}
 			b.delTransaction(rewardTransaction)
-			// useless tx
-			for _, value := range failed {
-				b.delTransaction(value)
-			}
 			previous_block_header_hash := b.Block[height-1].HeaderHash
 			b.Mtx.Unlock()
 			block = message.CreateBlock(version, previous_block_header_hash, TS, nBits, 0)
