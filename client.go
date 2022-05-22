@@ -171,6 +171,7 @@ func (c *CmdApp) Serve() {
 				c.peer.BroadcastTransaction(transaction)
 			} else {
 				log.Println("[ERROR] No transfer was made, because your don't have enough money.")
+				c.blockchain.Mtx.Unlock()
 			}
 
 		case "showbalance":
