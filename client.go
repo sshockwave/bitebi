@@ -131,6 +131,7 @@ func (c *CmdApp) Serve() {
 			totalPayment := int64(0)
 			tx_In := []message.TxIn{}
 
+			c.blockchain.Mtx.Lock()
 			for outPoint, _ := range c.blockchain.UTXO {
 				hash := outPoint.Hash
 				index := outPoint.Index
@@ -164,7 +165,6 @@ func (c *CmdApp) Serve() {
 					Tx_out:    oput,
 					Lock_time: 0,
 				}
-				c.blockchain.Mtx.Lock()
 				c.blockchain.addTransaction(transaction)
 				c.blockchain.Mtx.Unlock()
 				c.blockchain.refreshMining()
