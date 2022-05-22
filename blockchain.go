@@ -31,11 +31,11 @@ type BlockChain struct {
 func (b *BlockChain) verifyTxIn(in message.TxIn) (bool, int64) { // The first value returns whether it's valid, the second value returns its money
 	previous_output := in.Previous_output
 	signature_scripts := in.Signature_script
-	used, ok := b.UTXO[previous_output]
-	if !used || !ok {
-		return false, int64(0)
+	hash := previous_output.Hash
+	_, ok := b.TX[hash]
+	if !ok {
+		return false, 0
 	} else {
-		hash := previous_output.Hash
 		index := previous_output.Index
 		txOut := b.TX[hash].Tx_out[index]
 		if bytes.Compare(txOut.Pk_script, signature_scripts) != 0 {
@@ -346,7 +346,10 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 				log.Fatalf("[FATAL] Block creation failed")
 				continue
 			}
-			b.addBlock(len(b.Block), []message.SerializedBlock{serializedBlock})
+			ok := b.addBlock(len(b.Block), []message.SerializedBlock{serializedBlock})
+			if !ok {
+				log.Println("[WARN] A mined block is discarded.")
+			}
 			peer.BroadcastBlock(serializedBlock)
 		}
 		block.Nonce++
