@@ -3,14 +3,15 @@ package main
 import (
 	"crypto/dsa"
 	"crypto/rand"
-	"github.com/sshockwave/bitebi/message"
-	"github.com/sshockwave/bitebi/utils"
 	"math/big"
 	"strings"
+
+	"github.com/sshockwave/bitebi/message"
+	"github.com/sshockwave/bitebi/utils"
 )
 
 func Sign(key dsa.PrivateKey, message []byte) (signature []byte) {
-	r, s, e := dsa.Sign(rand.Reader, &key, message)
+	r, s, _ := dsa.Sign(rand.Reader, &key, message)
 	sig := r.String() + "*" + s.String()
 	return []byte(sig)
 }

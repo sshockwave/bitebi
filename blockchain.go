@@ -52,53 +52,26 @@ func (b *BlockChain) init() {
 	b.Height[genesis_full.HeaderHash] = 0
 }
 
-func (b *BlockChain) verifyTxIn(in message.TxIn) (bool, int64) { // The first value returns whether it's valid, the second value returns its money
-	previous_output := in.Previous_output
-	signature_scripts := in.Signature_script
-	hash := previous_output.Hash
-	_, ok := b.TX[hash]
-	if !ok {
-		return false, 0
-	} else {
-		index := previous_output.Index
-		txOut := b.TX[hash].Tx_out[index]
-		return true, txOut.Value
-		/*if bytes.Compare(txOut.Pk_script, signature_scripts) != 0
-		Verify(Bytes2PK(txOut.Pk_script), signature_scripts) {
-			return false, int64(0)
-		} else {
-			return true, txOut.Value
-		}*/
-	}
-}
-
 // Verify if this tx is valid without examining the links and states
 func (b *BlockChain) verifyTransaction(tx message.Transaction, isCoinbase bool) bool {
+	wallet := int64(0) // wallet varification
 	for i := 0; i < len(tx.Tx_in); i++ {
 		previous_output := tx.Tx_in[i].Previous_output
 		hash := previous_output.Hash
-		_, ok := b.TX[hash]
+		pre_tx, ok := b.TX[hash]
 		if !ok {
 			return false
-		} else {
-			index := previous_output.Index
-			pk_script := b.TX[hash].Tx_out[index].Pk_script
-			pass := VerifyTxSignature(Bytes2PK(pk_script), tx.Tx_in[i].Signature_script, tx)
-			if !pass {
-				return false
-			}
 		}
-
-	}
-
-	wallet := int64(0) // wallet varification
-	for i := 0; i < len(tx.Tx_in); i++ {
-		valid, money := b.verifyTxIn(tx.Tx_in[i])
-		if !valid {
+		index := previous_output.Index
+		if int(index) >= len(pre_tx.Tx_out) {
 			return false
-		} else {
-			wallet += money
 		}
+		pre_out := pre_tx.Tx_out[index]
+		pass := VerifyTxSignature(Bytes2PK(pre_out.Pk_script), tx.Tx_in[i].Signature_script, tx)
+		if !pass {
+			return false
+		}
+		wallet += pre_out.Value
 	}
 	for i := 0; i < len(tx.Tx_out); i++ {
 		wallet -= tx.Tx_out[i].Value
