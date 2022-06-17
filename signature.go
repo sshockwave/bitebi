@@ -10,7 +10,7 @@ import (
 )
 
 func Sign(key dsa.PrivateKey, message []byte) (signature []byte) {
-	r, s, e := dsa.Sign(rand.Reader, &key, message)
+	r, s, _ := dsa.Sign(rand.Reader, &key, message)
 	sig := r.String() + "*" + s.String()
 	return []byte(sig)
 }
