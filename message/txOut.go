@@ -9,10 +9,10 @@ type TxOut struct {
 	Pk_script []byte
 }
 
-func NewtxOut(value int64, pk_script_bytes string) TxOut {
+func NewtxOut(value int64, pk_script string) TxOut {
 	var to TxOut
 	to.Value = value
-	to.Pk_script = []byte(pk_script_bytes)
+	to.Pk_script = []byte(pk_script)
 	return to
 }
 

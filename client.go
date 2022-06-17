@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/dsa"
+	"crypto/rand"
 	"flag"
 	"fmt"
 	"log"
@@ -24,6 +26,9 @@ type CmdApp struct {
 	peer         *Peer
 	hasPeer      bool
 	name         string
+
+	publicKey  dsa.PublicKey
+	privateKey dsa.PrivateKey
 }
 
 func NewCmdApp() (app CmdApp) {
@@ -45,6 +50,19 @@ func NewCmdApp() (app CmdApp) {
 	app.blockchain.init()
 	app.name = utils.RandomName()
 	log.Printf("[INFO] App initialized with name: " + app.name)
+
+	// Generate private and public key
+	var params dsa.Parameters
+	if e := dsa.GenerateParameters(&params, rand.Reader, dsa.L1024N160); e != nil {
+		log.Printf("[ERROR] Generate key parameters error!" + e.Error())
+	}
+	var priv dsa.PrivateKey
+	priv.Parameters = params
+	app.privateKey = priv
+	if e := dsa.GenerateKey(&priv, rand.Reader); e != nil {
+		log.Printf("[ERROR] Generate keys error!" + e.Error())
+	}
+	app.publicKey = priv.PublicKey
 	return
 }
 
@@ -105,7 +123,10 @@ func (c *CmdApp) Serve() {
 		case "transfer":
 			// input extra
 			var fromAccount string
+			var fromAccount_PK dsa.PublicKey
+			var fromAccount_SK dsa.PrivateKey
 			var accountName string
+			var accountName_PK dsa.PublicKey
 			var amount int64
 			if !c.TokenScanner.Scan() {
 				log.Println("[ERROR] Usage: transfer <from> <to> <amount>")
@@ -140,12 +161,13 @@ func (c *CmdApp) Serve() {
 				index := outPoint.Index
 				transaction := c.blockchain.TX[hash]
 				txOut := transaction.Tx_out[index]
-				if string(txOut.Pk_script) == fromAccount {
+				if /*string(txOut.Pk_script) == fromAccount*/
+				string(txOut.Pk_script) == string(PK2Bytes(fromAccount_PK)) {
 					value := txOut.Value
 					totalPayment += value
 					txIn := message.TxIn{
-						Previous_output:  outPoint,
-						Signature_script: []byte(fromAccount),
+						Previous_output:                          outPoint,
+						Signature_script: /*[]byte(fromAccount)*/ nil,
 					}
 					tx_In = append(tx_In, txIn)
 				}
@@ -154,11 +176,11 @@ func (c *CmdApp) Serve() {
 				}
 			}
 
-			oput := []message.TxOut{{Value: amount, Pk_script: []byte(accountName)}}
+			oput := []message.TxOut{{Value: amount, Pk_script: /*[]byte(accountName)*/ PK2Bytes(accountName_PK)}}
 			if totalPayment > amount {
 				oput = append(oput, message.TxOut{
-					Value:     totalPayment - amount,
-					Pk_script: []byte(fromAccount),
+					Value:                             totalPayment - amount,
+					Pk_script: /*[]byte(fromAccount)*/ PK2Bytes(fromAccount_PK),
 				})
 			}
 			if totalPayment >= amount {
@@ -168,6 +190,12 @@ func (c *CmdApp) Serve() {
 					Tx_out:    oput,
 					Lock_time: 0,
 				}
+
+				signature := SignTransaction(fromAccount_SK, transaction)
+				for i := 0; i < len(transaction.Tx_in); i++ {
+					transaction.Tx_in[i].Signature_script = signature
+				}
+
 				c.blockchain.addTransaction(transaction)
 				c.blockchain.Mtx.Unlock()
 				c.blockchain.refreshMining()
@@ -267,7 +295,7 @@ func (c *CmdApp) Serve() {
 					block_cnt,
 					confirmed_tx_cnt,
 					unconfirmed_tx_cnt,
-					float64(tot_cnt) / float64(loop_cnt) * 1000 / float64(time_int),
+					float64(tot_cnt)/float64(loop_cnt)*1000/float64(time_int),
 				)
 				time.Sleep(time.Duration(time_int) * time.Millisecond)
 			}
