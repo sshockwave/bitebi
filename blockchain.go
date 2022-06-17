@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/dsa"
 	"encoding/hex"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -54,16 +56,19 @@ func (b *BlockChain) init() {
 }
 
 func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []byte, pk_script []byte) bool {
+	inputs := strings.FieldsFunc(string(signature_scripts), split)
 	operations := strings.FieldsFunc(string(pk_script), split)
 
-	stack := make([]interface{}, 0)
-	stack = append(stack, signature_scripts)
+	stack := make([]string, 0)
+	for i := 0; i < len(inputs); i++ {
+		stack = append(stack, inputs[i])
+	}
 
 	for i := 0; i < len(operations); i++ {
 		if operations[i] == "OP CHECKSIG" {
 			sig := stack[len(stack)-2]
 			pk := stack[len(stack)-1]
-			pass := VerifyTxSignature(pk, sig, tx)
+			pass := VerifyTxSignature(Bytes2PK([]byte(pk)), []byte(sig), tx)
 			if !pass {
 				return false
 			}
@@ -72,15 +77,19 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 			stack = append(stack, stack[len(stack)-1])
 		} else if operations[i] == "OP HASH160" {
 			top := stack[len(stack)-1]
-			top_hash, _ := utils.GetHash(&top)
-			stack = append(stack, top_hash)
+			top_hash := utils.Sha256Twice([]byte(top))
+			stack = append(stack, string(top_hash[:]))
 		} else if operations[i] == "OP EQUAL" {
-			top1 := stack[len(stack)-1]
-			top2 := stack[len(stack)-2]
-			stack[len(stack)-2] = (top1 == top2)
+			top1, _ := strconv.Atoi(stack[len(stack)-1])
+			top2, _ := strconv.Atoi(stack[len(stack)-2])
+			if top1 == top2 {
+				stack[len(stack)-2] = strconv.Itoa(1)
+			} else {
+				stack[len(stack)-2] = strconv.Itoa(0)
+			}
 			stack = stack[:len(stack)-1]
 		} else if operations[i] == "OP VERIFY" {
-			top := stack[len(stack)-1]
+			top, _ := strconv.Atoi(stack[len(stack)-1])
 			if top == 0 {
 				return false
 			}
@@ -93,7 +102,40 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 			}
 			stack = stack[:len(stack)-2]
 		} else if operations[i] == "OP CHECKMULTISIG" {
+			n, _ := strconv.Atoi(stack[len(stack)-1])
+			stack = stack[:len(stack)-1]
 
+			var Pks []dsa.PublicKey
+			for i := 0; i < n; i++ {
+				pk := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				Pks = append(Pks, Bytes2PK([]byte(pk)))
+			}
+
+			m, _ := strconv.Atoi(stack[len(stack)-1])
+			stack = stack[:len(stack)-1]
+			var Sigs [][]byte
+			for i := 0; i < m; i++ {
+				sig := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				Sigs = append(Sigs, []byte(sig))
+			}
+
+			pk_pt := 0
+			sig_pt := 0
+			for pk_pt < n && sig_pt < m {
+				pass := VerifyTxSignature(Pks[pk_pt], Sigs[sig_pt], tx)
+				if pass {
+					pk_pt++
+					sig_pt++
+				} else {
+					pk_pt++
+				}
+			}
+
+			if sig_pt < m {
+				return false
+			}
 		} else if operations[i] == "OP RETURN" {
 			return false
 		}
