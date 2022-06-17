@@ -290,7 +290,7 @@ func (c *CmdApp) Serve() {
 				loop_cnt += 1
 				c.blockchain.Mtx.Unlock()
 				fmt.Printf(
-					"Stats: %v nodes; %v blocks; %v tx; %v unconfirmed tx; %v new tx / sec\r",
+					"Stats: %v nodes; %v blocks; %v tx; %v unconfirmed tx; %v valid tx / sec\r",
 					peer_cnt,
 					block_cnt,
 					confirmed_tx_cnt,
