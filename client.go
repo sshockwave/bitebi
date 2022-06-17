@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"crypto/dsa"
-	"crypto/rand"
 	"flag"
 	"fmt"
 	"log"
@@ -27,7 +26,6 @@ type CmdApp struct {
 	hasPeer      bool
 	name         string
 
-	publicKey  dsa.PublicKey
 	privateKey dsa.PrivateKey
 }
 
@@ -49,20 +47,9 @@ func NewCmdApp() (app CmdApp) {
 	}
 	app.blockchain.init()
 	app.name = utils.RandomName()
+	app.privateKey = GenPrivKey()
 	log.Printf("[INFO] App initialized with name: " + app.name)
-
-	// Generate private and public key
-	var params dsa.Parameters
-	if e := dsa.GenerateParameters(&params, rand.Reader, dsa.L1024N160); e != nil {
-		log.Printf("[ERROR] Generate key parameters error!" + e.Error())
-	}
-	var priv dsa.PrivateKey
-	priv.Parameters = params
-	app.privateKey = priv
-	if e := dsa.GenerateKey(&priv, rand.Reader); e != nil {
-		log.Printf("[ERROR] Generate keys error!" + e.Error())
-	}
-	app.publicKey = priv.PublicKey
+	log.Printf("[INFO] PubKey: " + string(PK2Bytes(app.privateKey.PublicKey)))
 	return
 }
 

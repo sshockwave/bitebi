@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/sshockwave/bitebi/message"
@@ -52,6 +53,59 @@ func (b *BlockChain) init() {
 	b.Height[genesis_full.HeaderHash] = 0
 }
 
+func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []byte, pk_script []byte) bool {
+	operations := strings.FieldsFunc(string(pk_script), split)
+
+	stack := make([]interface{}, 0)
+	stack = append(stack, signature_scripts)
+
+	for i := 0; i < len(operations); i++ {
+		if operations[i] == "OP CHECKSIG" {
+			sig := stack[len(stack)-2]
+			pk := stack[len(stack)-1]
+			pass := VerifyTxSignature(pk, sig, tx)
+			if !pass {
+				return false
+			}
+			stack = stack[:len(stack)-2]
+		} else if operations[i] == "OP DUP" {
+			stack = append(stack, stack[len(stack)-1])
+		} else if operations[i] == "OP HASH160" {
+			top := stack[len(stack)-1]
+			top_hash, _ := utils.GetHash(&top)
+			stack = append(stack, top_hash)
+		} else if operations[i] == "OP EQUAL" {
+			top1 := stack[len(stack)-1]
+			top2 := stack[len(stack)-2]
+			stack[len(stack)-2] = (top1 == top2)
+			stack = stack[:len(stack)-1]
+		} else if operations[i] == "OP VERIFY" {
+			top := stack[len(stack)-1]
+			if top == 0 {
+				return false
+			}
+			stack = stack[:len(stack)-1]
+		} else if operations[i] == "OP EQUALVERIFY" {
+			top1 := stack[len(stack)-1]
+			top2 := stack[len(stack)-2]
+			if top1 != top2 {
+				return false
+			}
+			stack = stack[:len(stack)-2]
+		} else if operations[i] == "OP CHECKMULTISIG" {
+
+		} else if operations[i] == "OP RETURN" {
+			return false
+		}
+	}
+
+	if len(stack) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
 // Verify if this tx is valid without examining the links and states
 func (b *BlockChain) verifyTransaction(tx message.Transaction, isCoinbase bool) bool {
 	wallet := int64(0) // wallet varification
@@ -67,7 +121,7 @@ func (b *BlockChain) verifyTransaction(tx message.Transaction, isCoinbase bool) 
 			return false
 		}
 		pre_out := pre_tx.Tx_out[index]
-		pass := VerifyTxSignature(Bytes2PK(pre_out.Pk_script), tx.Tx_in[i].Signature_script, tx)
+		pass := b.verifyScripts(tx, tx.Tx_in[i].Signature_script, pre_out.Pk_script)
 		if !pass {
 			return false
 		}

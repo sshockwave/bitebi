@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/dsa"
 	"crypto/rand"
+	"log"
 	"math/big"
 	"strings"
 
@@ -122,4 +123,17 @@ func split(s rune) bool {
 		return true
 	}
 	return false
+}
+
+func GenPrivKey() (priv dsa.PrivateKey) {
+	// Generate private and public key
+	var params dsa.Parameters
+	if e := dsa.GenerateParameters(&params, rand.Reader, dsa.L1024N160); e != nil {
+		log.Printf("[ERROR] Generate key parameters error!" + e.Error())
+	}
+	priv.Parameters = params
+	if e := dsa.GenerateKey(&priv, rand.Reader); e != nil {
+		log.Printf("[ERROR] Generate keys error!" + e.Error())
+	}
+	return
 }
