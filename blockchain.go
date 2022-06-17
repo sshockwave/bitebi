@@ -138,6 +138,8 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 			}
 		} else if operations[i] == "OP RETURN" {
 			return false
+		} else { // Default: push into stack
+			stack = append(stack, operations[i])
 		}
 	}
 
