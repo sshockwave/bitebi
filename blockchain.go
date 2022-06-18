@@ -389,7 +389,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 			height := len(b.Block)
 			b.Height[newBlocks[i].HeaderHash] = height
 			b.Block = append(b.Block, newBlocks[i])
-			log.Printf("[INFO] New block at height %v: %v", newBlocks[i].HexString(), height)
+			log.Printf("[INFO] New block at height %v: %v", height, newBlocks[i].HexString())
 		}
 	}
 	go b.refreshMining()
