@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/dsa"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -30,13 +32,13 @@ var sblk1 message.SerializedBlock = message.SerializedBlock{
 }
 
 var blockchain BlockChain = BlockChain{
-	Block:      []message.SerializedBlock{},
-	Mtx:        sync.Mutex{},
-	TX:         map[[32]byte]message.Transaction{},
-	Mempool:    map[[32]byte]message.Transaction{},
+	Block:       []message.SerializedBlock{},
+	Mtx:         sync.Mutex{},
+	TX:          map[[32]byte]message.Transaction{},
+	Mempool:     map[[32]byte]message.Transaction{},
 	MineVersion: 1,
-	Height:     map[[32]byte]int{},
-	UTXO:       map[message.Outpoint]bool{},
+	Height:      map[[32]byte]int{},
+	UTXO:        map[message.Outpoint]bool{},
 }
 
 var tx1 message.Transaction = message.Transaction{
@@ -74,8 +76,46 @@ var tx1 message.Transaction = message.Transaction{
 	Lock_time: 72,
 }
 
+var pk_script1 []byte = []byte("OP EQUALVERIFY")
+var signature_script1 []byte = []byte("199902*199902")
+
+func TestVerifyTxSignature1(t *testing.T) {
+	pass := blockchain.verifyScripts(tx1, signature_script1, pk_script1)
+	fmt.Println(pass)
+	if !pass {
+		t.Fatalf("It should pass, but it doesn't.")
+	}
+}
+
+var sk dsa.PrivateKey = GenPrivKey()
+var pk dsa.PublicKey = sk.PublicKey
+
+var pk_script2 []byte = []byte(string(PK2Bytes(pk)) + "*" + "OP CHECKSIG")
+var signature_script2 []byte = []byte(SignTransaction(sk, tx1))
+
+func TestVerifyTxSignature2(t *testing.T) {
+	success := blockchain.verifyScripts(tx1, signature_script2, pk_script2)
+
+	fmt.Println(success)
+	if !success {
+		t.Fatalf("It should pass, but it doesn't.")
+	}
+}
+
+var pk_script3 []byte = []byte("OP DUP" + "*" + "OP EQUAL" + "*" + "OP VERIFY")
+var signature_script3 []byte = []byte("777")
+
+func TestVerifyTxSignature3(t *testing.T) {
+	success := blockchain.verifyScripts(tx1, signature_script3, pk_script3)
+
+	fmt.Println(success)
+	if !success {
+		t.Fatalf("It should pass, but it doesn't.")
+	}
+}
+
 func TestVerifyTransaction(t *testing.T) {
-	if blockchain.verifyTransaction(tx1) {
+	if blockchain.verifyTransaction(tx1, false) {
 		t.Fatalf("It should return false, but it returns true")
 	}
 }
@@ -90,7 +130,7 @@ func TestAddTransaction(t *testing.T) {
 	}
 }
 
-func TestVerifyBlock(t *testing.T) {
+/*func TestVerifyBlock(t *testing.T) {
 	if blockchain.verifyBlock(sblk1) {
 		t.Fatalf("It should return false, but it returns true")
 	}
@@ -102,7 +142,7 @@ func TestAddBlock(t *testing.T) {
 	if len(blockchain.Block) == 0 {
 		t.Fatalf("It should add this block, but it doesn't.")
 	}
-}
+}*/
 
 func TestMine(t *testing.T) {
 
