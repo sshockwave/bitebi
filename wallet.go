@@ -140,3 +140,19 @@ func (w *Wallet) GetSK(name string) (sk dsa.PrivateKey, ok bool) {
 	}
 	return acc.key, true
 }
+
+func (w *Wallet) GetBalance(name string) (sum int64) {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+	acc, ok := w.Accounts[name]
+	if !ok {
+		return
+	}
+	for oput, _ := range acc.UTXO {
+		if ok1, ok2 := w.blockchain.UTXO[oput]; !ok1 || !ok2 {
+			continue
+		}
+		sum += w.blockchain.TX[oput.Hash].Tx_out[oput.Index].Value
+	}
+	return
+}

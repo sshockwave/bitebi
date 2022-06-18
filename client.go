@@ -24,7 +24,6 @@ type CmdApp struct {
 	blockchain   BlockChain
 	peer         *Peer
 	hasPeer      bool
-	name         string
 	Wallet       Wallet
 }
 
@@ -46,10 +45,8 @@ func NewCmdApp() (app CmdApp) {
 	}
 	app.Wallet.Init(&app.blockchain)
 	app.blockchain.init(&app.Wallet)
-	app.name = utils.RandomName()
 	privateKey := GenPrivKey()
 	app.Wallet.AddPrivKey("self", privateKey)
-	log.Printf("[INFO] App initialized with name: " + app.name)
 	log.Printf("[INFO] PrivKey: " + string(SK2Bytes(privateKey)))
 	log.Printf("[INFO] PubKey: " + string(PK2Bytes(privateKey.PublicKey)))
 	return
@@ -216,27 +213,13 @@ func (c *CmdApp) Serve() {
 			}
 
 		case "showbalance":
-			chosen_account := c.name
+			chosen_account := "self"
 			if c.TokenScanner.Scan() {
 				chosen_account = c.TokenScanner.Text()
 			}
 			// display the balance of an account
-			wallet := int64(0)
-			c.blockchain.Mtx.Lock()
-			for key, val := range c.blockchain.UTXO {
-				if val == false {
-					continue
-				}
-				hash := key.Hash
-				index := key.Index
-				transaction := c.blockchain.TX[hash]
-				txOut := transaction.Tx_out[index]
-				if string(txOut.Pk_script) == chosen_account {
-					wallet += txOut.Value
-				}
-			}
-			c.blockchain.Mtx.Unlock()
-			log.Printf("Client %v has %v satoshis", chosen_account, wallet)
+			val := c.Wallet.GetBalance(chosen_account)
+			log.Printf("Client %v has %v satoshis", chosen_account, val)
 		case "serve":
 			if c.hasPeer {
 				log.Println("[ERROR] A server is already running!")
@@ -258,13 +241,6 @@ func (c *CmdApp) Serve() {
 					c.hasPeer = true
 				}
 			}
-		case "name":
-			if !c.TokenScanner.Scan() {
-				log.Println("[WARN] name command needs a name")
-			}
-			c.name = c.TokenScanner.Text()
-			c.blockchain.refreshMining()
-			log.Printf("[INFO] name changed to %v . New miners will use this name.", c.name)
 		case "sleep":
 			if !c.TokenScanner.Scan() {
 				break
