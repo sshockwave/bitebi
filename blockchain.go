@@ -57,13 +57,12 @@ func (b *BlockChain) init(w *Wallet) {
 }
 
 func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []byte, pk_script []byte) bool {
-	inputs := strings.FieldsFunc(string(signature_scripts), split)
-	operations := strings.FieldsFunc(string(pk_script), split)
+	operations := strings.FieldsFunc(string(signature_scripts), split)
+	for _, op := range strings.FieldsFunc(string(pk_script), split) {
+		operations = append(operations, op)
+	}
 
 	stack := make([]string, 0)
-	for i := 0; i < len(inputs); i++ {
-		stack = append(stack, inputs[i])
-	}
 
 	for i := 0; i < len(operations); i++ {
 		if operations[i] == "OP CHECKSIG" {
