@@ -46,6 +46,24 @@ func VerifyTxSignature(key dsa.PublicKey, signature []byte, transaction message.
 	return Verify(key, signature, hash[:])
 }
 
+func GeneratePkScript(txType string, pk dsa.PublicKey) []byte {
+	if txType == "P2PKH" {
+		pk_script := string(PK2Bytes(pk)) + "*" + "OP CHECKSIG"
+		return []byte(pk_script)
+	} else if txType == "P2SH" {
+
+	}
+}
+
+func FindAccountFromPkScript(txType string, pk_script []byte) dsa.PublicKey {
+	if txType == "P2PKH" {
+		operations := strings.FieldsFunc(string(pk_script), split)
+		return Bytes2PK([]byte(operations[0]))
+	} else if txType == "P2SH" {
+
+	}
+}
+
 func Parameters2Bytes(parameters dsa.Parameters) (b []byte) {
 	p := *parameters.P
 	q := *parameters.Q
