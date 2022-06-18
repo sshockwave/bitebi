@@ -135,6 +135,29 @@ func TestVerifyTxSignature4(t *testing.T) {
 	}
 }
 
+func TestGenerateP2PKHPkScript(t *testing.T) {
+	pk_script := GenerateP2PKHPkScript(PK)
+	signature_script := SignTransaction(SK, tx1)
+	success := blockchain.verifyScripts(tx1, signature_script, pk_script)
+
+	fmt.Println(success)
+	if !success {
+		t.Fatalf("It should pass, but it doesn't.")
+	}
+}
+
+func TestGenerateMultisigPkScript(t *testing.T) {
+	pks := []dsa.PublicKey{pk1, pk2, pk3}
+	pk_script := GenerateMultisigPkScript(pks, 3, 2)
+	signature_script := []byte(string(SignTransaction(sk1, tx1)) + "*" + string(SignTransaction(sk2, tx1)))
+	success := blockchain.verifyScripts(tx1, signature_script, pk_script)
+
+	fmt.Println(success)
+	if !success {
+		t.Fatalf("It should pass, but it doesn't.")
+	}
+}
+
 func TestVerifyTransaction(t *testing.T) {
 	if blockchain.verifyTransaction(tx1, false) {
 		t.Fatalf("It should return false, but it returns true")
