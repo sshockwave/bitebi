@@ -81,6 +81,9 @@ func (w *Wallet) OnTX(tx *message.Transaction) { // WARN: no lock!
 	hash, _ := utils.GetHash(tx)
 	for i, o := range tx.Tx_out {
 		pk_script := FindAccountFromPkScript("P2PKH", o.Pk_script)
+		if len(pk_script) == 0 {
+			continue
+		}
 		acc, ok := w.keyowner[pk_script[0]]
 		if ok {
 			acc.UTXO[message.NewOutPoint(hash, uint32(i))] = void_null
