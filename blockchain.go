@@ -523,6 +523,16 @@ func (b *BlockChain) PauseMining() {
 }
 
 func (b *BlockChain) refreshMining() {
-	b.PauseMining()
-	b.ResumeMining()
+	b.Mtx.Lock()
+	defer b.Mtx.Unlock()
+	paused_before := b.MinerPaused
+	if !paused_before {
+		b.MinerPaused = true
+		b.MineBarrier.Lock()
+	}
+	b.MineVersion++
+	if !paused_before {
+		b.MinerPaused = false
+		b.MineBarrier.Unlock()
+	}
 }
