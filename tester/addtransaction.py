@@ -5,5 +5,5 @@ import time
 time.sleep(10)
 while True:
     import time
-    time.sleep(0.1)
+    time.sleep(0.01)
     print(f"transfer self self 1", flush=True)
