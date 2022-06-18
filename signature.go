@@ -69,12 +69,14 @@ func GenerateMultisigPkScript(pks []dsa.PublicKey, n int, m int) []byte {
 		pk_script := []byte(raw_script)
 		return pk_script
 	}
-	panic("Unsupported PKScript type")
 }
 
 func FindAccountFromPkScript(txType string, pk_script []byte) (pks []dsa.PublicKey) {
 	if txType == "P2PKH" {
 		operations := strings.FieldsFunc(string(pk_script), split)
+		if len(operations) < 1 {
+			return
+		}
 		pk := Bytes2PK([]byte(operations[0]))
 		pks = []dsa.PublicKey{pk}
 	} else if txType == "multisig" {

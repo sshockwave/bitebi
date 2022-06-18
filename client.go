@@ -191,7 +191,7 @@ func (c *CmdApp) Serve() {
 			if totalPayment > amount {
 				oput = append(oput, message.TxOut{
 					Value:                             totalPayment - amount,
-					Pk_script: GeneratePkScript("P2PKH", fromAccount_SK.PublicKey),
+					Pk_script: GenerateP2PKHPkScript(fromAccount_SK.PublicKey),
 				})
 			}
 			if totalPayment >= amount {
