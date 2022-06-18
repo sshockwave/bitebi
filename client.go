@@ -208,6 +208,7 @@ func (c *CmdApp) Serve() {
 				c.blockchain.Mtx.Lock()
 				c.blockchain.addTransaction(transaction)
 				c.blockchain.Mtx.Unlock()
+				c.Wallet.RemoveUTXO(fromAccount, outpoints)
 				c.blockchain.refreshMining()
 				c.peer.BroadcastTransaction(transaction)
 			}
