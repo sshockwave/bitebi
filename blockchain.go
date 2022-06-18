@@ -489,7 +489,7 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 		}
 		hash, err := utils.GetHash(&block)
 		if err == nil && utils.HasValidHash(hash, nBits) {
-			log.Printf("[INFO] (%v) A new block is successfully mined!!!!", string(Pk_script))
+			log.Printf("[INFO] A new block is successfully mined!!!!")
 			var serializedBlock message.SerializedBlock
 			serializedBlock, err = message.CreateSerialBlock(block, TS)
 			if err != nil {

@@ -90,7 +90,8 @@ func (c *CmdApp) Serve() {
 		case "mine":
 			// create a goroutine that mines
 			// Examples: easiest(0x20ffffff), hardest(0x03000000)
-			go c.blockchain.mine(0, c.peer.Config.MaxNBits, c.peer, []byte(c.name))
+			pkscript := GenerateP2PKHPkScript(c.Wallet.Pubkey["self"])
+			go c.blockchain.mine(0, c.peer.Config.MaxNBits, c.peer, pkscript)
 		case "stopmining":
 			// stop all mining processes
 			c.blockchain.PauseMining()
@@ -170,12 +171,12 @@ func (c *CmdApp) Serve() {
 
 			accountName_PK, ok = c.Wallet.Pubkey[accountName]
 			if !ok {
-				log.Printf("[ERROR] No known pubkey for %v\n", accountName)
+				log.Printf("[ERROR] No known pubkey for %v", accountName)
 				continue
 			}
 			fromAccount_SK, ok = c.Wallet.GetSK(fromAccount) // TODO: this line is not thread safe
 			if !ok {
-				log.Printf("[ERROR] No known privkey for %v\n", fromAccount)
+				log.Printf("[ERROR] No known privkey for %v", fromAccount)
 				continue
 			}
 			totalPayment, outpoints := c.Wallet.MakeTxIn(fromAccount, amount)
@@ -263,7 +264,7 @@ func (c *CmdApp) Serve() {
 			}
 			c.name = c.TokenScanner.Text()
 			c.blockchain.refreshMining()
-			log.Printf("[INFO] name changed to %v . New miners will use this name.\n", c.name)
+			log.Printf("[INFO] name changed to %v . New miners will use this name.", c.name)
 		case "sleep":
 			if !c.TokenScanner.Scan() {
 				break

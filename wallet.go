@@ -20,7 +20,7 @@ type Wallet struct {
 	blockchain *BlockChain
 	Accounts map[string]*Account
 	Pubkey map[string]dsa.PublicKey
-	keyowner map[dsa.PublicKey]*Account // only logs those we own privkey
+	keyowner map[string]*Account // only logs those we own privkey
 }
 
 func (w *Wallet) Init(b *BlockChain) {
@@ -28,7 +28,7 @@ func (w *Wallet) Init(b *BlockChain) {
 	w.mtx = &b.Mtx
 	w.Accounts = make(map[string]*Account)
 	w.Pubkey = make(map[string]dsa.PublicKey)
-	w.keyowner = make(map[dsa.PublicKey]*Account)
+	w.keyowner = make(map[string]*Account)
 }
 
 func (w *Wallet) AddPubKey(name string, pub dsa.PublicKey) {
@@ -39,7 +39,7 @@ func (w *Wallet) AddPubKey(name string, pub dsa.PublicKey) {
 		if ret == pub {
 			return
 		}
-		log.Printf("[ERROR] Name %v has an existing pubkey: %v\n", name, string(PK2Bytes(pub)))
+		log.Printf("[ERROR] Name %v has an existing pubkey: %v", name, string(PK2Bytes(pub)))
 		return
 	}
 	w.Pubkey[name] = pub
@@ -52,11 +52,11 @@ func (w *Wallet) AddPrivKey(name string, prv dsa.PrivateKey) {
 		if ret.key == prv {
 			return
 		}
-		log.Printf("[ERROR] Name %v has an existing privkey: %v\n", name, string(SK2Bytes(prv)))
+		log.Printf("[ERROR] Name %v has an existing privkey: %v", name, string(SK2Bytes(prv)))
 		return
 	}
 	if pub, ok := w.Pubkey[name]; ok && pub != prv.PublicKey {
-		log.Printf("[ERROR] Name %v has an existing pubkey: %v\n", name, string(PK2Bytes(pub)))
+		log.Printf("[ERROR] Name %v has an existing pubkey: %v", name, string(PK2Bytes(pub)))
 	}
 	var ac Account
 	ac.name = name
@@ -74,7 +74,7 @@ func (w *Wallet) AddPrivKey(name string, prv dsa.PrivateKey) {
 	}
 	w.Accounts[name] = &ac
 	w.Pubkey[name] = prv.PublicKey
-	w.keyowner[prv.PublicKey] = &ac
+	w.keyowner[string(PK2Bytes(prv.PublicKey))] = &ac
 }
 
 func (w *Wallet) OnTX(tx *message.Transaction) { // WARN: no lock!
@@ -84,8 +84,9 @@ func (w *Wallet) OnTX(tx *message.Transaction) { // WARN: no lock!
 		if len(pk_script) == 0 {
 			continue
 		}
-		acc, ok := w.keyowner[pk_script[0]]
+		acc, ok := w.keyowner[string(PK2Bytes(pk_script[0]))]
 		if ok {
+			log.Printf("[INFO] New balance for %v: %v", acc.name, o.Value)
 			acc.UTXO[message.NewOutPoint(hash, uint32(i))] = void_null
 		}
 	}

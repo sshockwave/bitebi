@@ -1,0 +1,5 @@
+serve 10001
+name Alice
+mine
+sleep 5
+transfer self self 1
