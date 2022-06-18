@@ -49,6 +49,7 @@ func NewCmdApp() (app CmdApp) {
 	app.name = utils.RandomName()
 	app.privateKey = GenPrivKey()
 	log.Printf("[INFO] App initialized with name: " + app.name)
+	log.Printf("[INFO] PrivKey: " + string(SK2Bytes(app.privateKey)))
 	log.Printf("[INFO] PubKey: " + string(PK2Bytes(app.privateKey.PublicKey)))
 	return
 }

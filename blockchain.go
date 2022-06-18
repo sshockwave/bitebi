@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/hex"
 	"log"
 	"strings"
 	"sync"
@@ -314,11 +313,7 @@ func (b *BlockChain) addBlock(startPos int, newBlocks []message.SerializedBlock)
 			height := len(b.Block)
 			b.Height[newBlocks[i].HeaderHash] = height
 			b.Block = append(b.Block, newBlocks[i])
-			outputHash := newBlocks[i].HeaderHash
-			for a, b := 0, 31; a < b; a, b = a+1, b-1 {
-				outputHash[a], outputHash[b] = outputHash[b], outputHash[a]
-			}
-			log.Printf("[INFO] New block at height %v: %v", hex.EncodeToString(outputHash[:]), height)
+			log.Printf("[INFO] New block at height %v: %v", newBlocks[i].HexString(), height)
 		}
 	}
 	go b.refreshMining()

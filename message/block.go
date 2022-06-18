@@ -1,6 +1,7 @@
 package message
 
 import (
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -131,4 +132,12 @@ func (b *SerializedBlock) LoadBuffer(reader utils.BufReader) (err error) {
 		err = b.Txns[i].LoadBuffer(reader)
 	}
 	return
+}
+
+func (b *SerializedBlock) HexString() string {
+	outputHash := b.HeaderHash
+	for a, b := 0, 31; a < b; a, b = a+1, b-1 {
+		outputHash[a], outputHash[b] = outputHash[b], outputHash[a]
+	}
+	return hex.EncodeToString(outputHash[:])
 }
