@@ -1,5 +1,5 @@
 serve 10001
 name Alice
 mine
-sleep 5
+sleep 10
 transfer self self 1

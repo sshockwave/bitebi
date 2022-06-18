@@ -41,7 +41,9 @@ func Verify(key dsa.PublicKey, signature []byte, message []byte) bool {
 
 func VerifyTxSignature(key dsa.PublicKey, signature []byte, transaction message.Transaction) bool {
 	txCopy := transaction
+	txCopy.Tx_in = make([]message.TxIn, len(transaction.Tx_in))
 	for i := 0; i < len(txCopy.Tx_in); i++ {
+		txCopy.Tx_in[i] = transaction.Tx_in[i]
 		txCopy.Tx_in[i].Signature_script = nil
 	}
 	hash, _ := utils.GetHash(&txCopy)

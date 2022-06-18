@@ -468,7 +468,6 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 				},
 			}
 			TS = []message.Transaction{rewardTransaction}
-			b.addTransaction(rewardTransaction)
 			for _, hash := range b.sortedMempool() {
 				value := b.Mempool[hash]
 				if b.verifyTransaction(value, false) && b.confirmTransaction(value, false) {
@@ -481,7 +480,6 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 			for _, value := range TS[1:] {
 				b.cancelTransaction(value, false)
 			}
-			b.delTransaction(rewardTransaction)
 			previous_block_header_hash := b.Block[height-1].HeaderHash
 			b.Mtx.Unlock()
 			block = message.CreateBlock(version, previous_block_header_hash, TS, nBits, 0)
