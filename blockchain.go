@@ -67,6 +67,9 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 
 	for i := 0; i < len(operations); i++ {
 		if operations[i] == "OP CHECKSIG" {
+			if len(stack) < 2 {
+				return false
+			}
 			sig := stack[len(stack)-2]
 			pk := stack[len(stack)-1]
 			pass := VerifyTxSignature(Bytes2PK([]byte(pk)), []byte(sig), tx)
@@ -75,12 +78,21 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 			}
 			stack = stack[:len(stack)-2]
 		} else if operations[i] == "OP DUP" {
+			if len(stack) < 1 {
+				return false
+			}
 			stack = append(stack, stack[len(stack)-1])
 		} else if operations[i] == "OP HASH160" {
+			if len(stack) < 1 {
+				return false
+			}
 			top := stack[len(stack)-1]
 			top_hash := utils.Sha256Twice([]byte(top))
 			stack = append(stack, string(top_hash[:]))
 		} else if operations[i] == "OP EQUAL" {
+			if len(stack) < 2 {
+				return false
+			}
 			top1, _ := strconv.Atoi(stack[len(stack)-1])
 			top2, _ := strconv.Atoi(stack[len(stack)-2])
 			if top1 == top2 {
@@ -90,12 +102,18 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 			}
 			stack = stack[:len(stack)-1]
 		} else if operations[i] == "OP VERIFY" {
+			if len(stack) < 1 {
+				return false
+			}
 			top, _ := strconv.Atoi(stack[len(stack)-1])
 			if top == 0 {
 				return false
 			}
 			stack = stack[:len(stack)-1]
 		} else if operations[i] == "OP EQUALVERIFY" {
+			if len(stack) < 2 {
+				return false
+			}
 			top1 := stack[len(stack)-1]
 			top2 := stack[len(stack)-2]
 			if top1 != top2 {
@@ -103,8 +121,14 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 			}
 			stack = stack[:len(stack)-2]
 		} else if operations[i] == "OP CHECKMULTISIG" {
+			if len(stack) < 1 {
+				return false
+			}
 			n, _ := strconv.Atoi(stack[len(stack)-1])
 			stack = stack[:len(stack)-1]
+			if len(stack) < n {
+				return false
+			}
 
 			var Pks []dsa.PublicKey
 			for i := 0; i < n; i++ {
@@ -113,7 +137,13 @@ func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []b
 				Pks = append(Pks, Bytes2PK([]byte(pk)))
 			}
 
+			if len(stack) < 1 {
+				return false
+			}
 			m, _ := strconv.Atoi(stack[len(stack)-1])
+			if len(stack) < m {
+				return false
+			}
 			stack = stack[:len(stack)-1]
 			var Sigs [][]byte
 			for i := 0; i < m; i++ {
