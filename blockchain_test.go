@@ -121,6 +121,9 @@ func TestVerifyTransaction(t *testing.T) {
 }
 
 func TestAddTransaction(t *testing.T) {
+	var wallet Wallet
+	wallet.Init(&blockchain)
+	blockchain.init(&wallet)
 	blockchain.addTransaction(tx1)
 	hash1, _ := utils.GetHash(&tx1)
 	tx2 := blockchain.Mempool[hash1]
@@ -130,8 +133,8 @@ func TestAddTransaction(t *testing.T) {
 	}
 }
 
-/*func TestVerifyBlock(t *testing.T) {
-	if blockchain.verifyBlock(sblk1) {
+func TestVerifyBlock(t *testing.T) {
+	if blockchain.verifyBlock(sblk1, 0) {
 		t.Fatalf("It should return false, but it returns true")
 	}
 }
@@ -142,7 +145,7 @@ func TestAddBlock(t *testing.T) {
 	if len(blockchain.Block) == 0 {
 		t.Fatalf("It should add this block, but it doesn't.")
 	}
-}*/
+}
 
 func TestMine(t *testing.T) {
 
