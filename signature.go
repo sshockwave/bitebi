@@ -65,7 +65,7 @@ func GenerateMultisigPkScript(pks []dsa.PublicKey, n int, m int) []byte {
 			raw_script += string(PK2Bytes(pks[i]))
 			raw_script += "*"
 		}
-		raw_script += "n"
+		raw_script += strconv.Itoa(n)
 		raw_script += "*"
 		raw_script += "OP CHECKMULTISIG"
 		pk_script := []byte(raw_script)
