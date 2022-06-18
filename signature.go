@@ -69,6 +69,7 @@ func GenerateMultisigPkScript(pks []dsa.PublicKey, n int, m int) []byte {
 		pk_script := []byte(raw_script)
 		return pk_script
 	}
+	panic("Unsupported PKScript type")
 }
 
 func FindAccountFromPkScript(txType string, pk_script []byte) (pks []dsa.PublicKey) {
@@ -82,7 +83,7 @@ func FindAccountFromPkScript(txType string, pk_script []byte) (pks []dsa.PublicK
 			pks = append(pks, Bytes2PK([]byte(operations[i])))
 		}
 	}
-	return
+	return pks
 }
 
 func Parameters2Bytes(parameters dsa.Parameters) (b []byte) {
@@ -124,9 +125,12 @@ func Bytes2Parameters(b []byte) dsa.Parameters {
 	return dsa.Parameters{P: big_p, Q: big_q, G: big_g}
 }
 
-func Bytes2PK(b []byte) dsa.PublicKey {
+func Bytes2PK(b []byte) (pub dsa.PublicKey) {
 	pk_bytes := string(b)
 	param := strings.FieldsFunc(pk_bytes, splitKeys)
+	if len(param) < 4 {
+		return
+	}
 	p := param[0]
 	q := param[1]
 	g := param[2]

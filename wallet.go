@@ -10,6 +10,7 @@ import (
 )
 
 type Account struct {
+	name string
 	key dsa.PrivateKey
 	UTXO map[message.Outpoint]void
 }
@@ -58,6 +59,7 @@ func (w *Wallet) AddPrivKey(name string, prv dsa.PrivateKey) {
 		log.Printf("[ERROR] Name %v has an existing pubkey: %v\n", name, string(PK2Bytes(pub)))
 	}
 	var ac Account
+	ac.name = name
 	ac.key = prv
 	ac.UTXO = make(map[message.Outpoint]void)
 	self_script := string(PK2Bytes(ac.key.PublicKey))
@@ -77,7 +79,7 @@ func (w *Wallet) AddPrivKey(name string, prv dsa.PrivateKey) {
 func (w *Wallet) OnTX(tx *message.Transaction) { // WARN: no lock!
 	hash, _ := utils.GetHash(tx)
 	for i, o := range tx.Tx_out {
-		pk_script := Bytes2PK(o.Pk_script)
+		pk_script := FindAccountFromPkScript("P2PKH", o.Pk_script)
 		acc, ok := w.keyowner[pk_script]
 		if ok {
 			acc.UTXO[message.NewOutPoint(hash, uint32(i))] = void_null
