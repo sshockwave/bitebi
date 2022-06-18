@@ -114,6 +114,27 @@ func TestVerifyTxSignature3(t *testing.T) {
 	}
 }
 
+var sk1 dsa.PrivateKey = GenPrivKey()
+var pk1 dsa.PublicKey = sk1.PublicKey
+
+var sk2 dsa.PrivateKey = GenPrivKey()
+var pk2 dsa.PublicKey = sk2.PublicKey
+
+var sk3 dsa.PrivateKey = GenPrivKey()
+var pk3 dsa.PublicKey = sk3.PublicKey
+
+var pk_script4 []byte = []byte("2" + "*" + string(PK2Bytes(pk1)) + "*" + string(PK2Bytes(pk2)) + "*" + string(PK2Bytes(pk3)) + "*" + "3" + "*" + "OP CHECKMULTISIG")
+var signature_script4 []byte = []byte(string(SignTransaction(sk1, tx1)) + "*" + string(SignTransaction(sk2, tx1)))
+
+func TestVerifyTxSignature4(t *testing.T) {
+	success := blockchain.verifyScripts(tx1, signature_script4, pk_script4)
+
+	fmt.Println(success)
+	if !success {
+		t.Fatalf("It should pass, but it doesn't.")
+	}
+}
+
 func TestVerifyTransaction(t *testing.T) {
 	if blockchain.verifyTransaction(tx1, false) {
 		t.Fatalf("It should return false, but it returns true")

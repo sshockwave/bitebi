@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/dsa"
 	"crypto/rand"
+	"fmt"
 	"log"
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/sshockwave/bitebi/message"
@@ -46,22 +48,41 @@ func VerifyTxSignature(key dsa.PublicKey, signature []byte, transaction message.
 	return Verify(key, signature, hash[:])
 }
 
-func GeneratePkScript(txType string, pk dsa.PublicKey) []byte {
-	if txType == "P2PKH" {
-		pk_script := string(PK2Bytes(pk)) + "*" + "OP CHECKSIG"
-		return []byte(pk_script)
-	} else if txType == "P2SH" {
+func GenerateP2PKHPkScript(pk dsa.PublicKey) []byte {
+	pk_script := string(PK2Bytes(pk)) + "*" + "OP CHECKSIG"
+	return []byte(pk_script)
+}
 
+func GenerateMultisigPkScript(pks []dsa.PublicKey, n int, m int) []byte {
+	if m > n || len(pks) != n {
+		fmt.Println("Wrong parameters.")
+		return nil
+	} else {
+		var raw_script string = strconv.Itoa(m) + "*"
+		for i := 0; i < len(pks); i++ { // Assert len(pks) == n
+			raw_script += string(PK2Bytes(pks[i]))
+			raw_script += "*"
+		}
+		raw_script += "n"
+		raw_script += "*"
+		raw_script += "OP CHECKMULTISIG"
+		pk_script := []byte(raw_script)
+		return pk_script
 	}
 }
 
-func FindAccountFromPkScript(txType string, pk_script []byte) dsa.PublicKey {
+func FindAccountFromPkScript(txType string, pk_script []byte) (pks []dsa.PublicKey) {
 	if txType == "P2PKH" {
 		operations := strings.FieldsFunc(string(pk_script), split)
-		return Bytes2PK([]byte(operations[0]))
-	} else if txType == "P2SH" {
-
+		pk := Bytes2PK([]byte(operations[0]))
+		pks = []dsa.PublicKey{pk}
+	} else if txType == "multisig" {
+		operations := strings.FieldsFunc(string(pk_script), split)
+		for i := 1; i <= len(operations)-3; i++ {
+			pks = append(pks, Bytes2PK([]byte(operations[i])))
+		}
 	}
+	return
 }
 
 func Parameters2Bytes(parameters dsa.Parameters) (b []byte) {
