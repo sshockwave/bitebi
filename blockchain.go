@@ -26,9 +26,10 @@ type BlockChain struct {
 	// used to examine the existence of a block
 	Height map[[32]byte]int
 	UTXO   map[message.Outpoint]bool
+	Wallet *Wallet
 }
 
-func (b *BlockChain) init() {
+func (b *BlockChain) init(w *Wallet) {
 	b.TX = make(map[[32]byte]message.Transaction)
 	b.Mempool = make(map[[32]byte]message.Transaction)
 	b.Height = make(map[[32]byte]int)
@@ -50,6 +51,7 @@ func (b *BlockChain) init() {
 	}
 	b.Block = []message.SerializedBlock{genesis_full}
 	b.Height[genesis_full.HeaderHash] = 0
+	b.Wallet = w
 }
 
 func (b *BlockChain) verifyScripts(tx message.Transaction, signature_scripts []byte, pk_script []byte) bool {
@@ -171,6 +173,7 @@ func (b *BlockChain) addTransaction(tx message.Transaction) {
 		outPoint := message.NewOutPoint(hash, uint32(i))
 		b.UTXO[outPoint] = true
 	}
+	b.Wallet.OnTX(&tx)
 }
 
 func (b *BlockChain) confirmTransaction(tx message.Transaction, isCoinbase bool) bool {

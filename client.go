@@ -25,8 +25,7 @@ type CmdApp struct {
 	peer         *Peer
 	hasPeer      bool
 	name         string
-
-	privateKey dsa.PrivateKey
+	Wallet       Wallet
 }
 
 func NewCmdApp() (app CmdApp) {
@@ -45,12 +44,14 @@ func NewCmdApp() (app CmdApp) {
 		}
 		app.LineScanner = bufio.NewScanner(f)
 	}
-	app.blockchain.init()
+	app.Wallet.Init(&app.blockchain)
+	app.blockchain.init(&app.Wallet)
 	app.name = utils.RandomName()
-	app.privateKey = GenPrivKey()
+	privateKey := GenPrivKey()
+	app.Wallet.AddPrivKey("self", privateKey)
 	log.Printf("[INFO] App initialized with name: " + app.name)
-	log.Printf("[INFO] PrivKey: " + string(SK2Bytes(app.privateKey)))
-	log.Printf("[INFO] PubKey: " + string(PK2Bytes(app.privateKey.PublicKey)))
+	log.Printf("[INFO] PrivKey: " + string(SK2Bytes(privateKey)))
+	log.Printf("[INFO] PubKey: " + string(PK2Bytes(privateKey.PublicKey)))
 	return
 }
 
@@ -108,14 +109,44 @@ func (c *CmdApp) Serve() {
 			} else {
 				c.peer.NewConn(conn)
 			}
+		case "addpk":
+			var name string
+			var pkstring string
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: addpk <name> <public key>")
+				continue
+			}
+			name = c.TokenScanner.Text()
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: addpk <name> <public key>")
+				continue
+			}
+			pkstring = c.TokenScanner.Text()
+			pk := Bytes2PK([]byte(pkstring))
+			c.Wallet.AddPubKey(name, pk)
+		case "addsk":
+			var name string
+			var skstring string
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: addpk <name> <public key>")
+				continue
+			}
+			name = c.TokenScanner.Text()
+			if !c.TokenScanner.Scan() {
+				log.Println("[ERROR] Usage: addpk <name> <public key>")
+				continue
+			}
+			skstring = c.TokenScanner.Text()
+			sk := Bytes2SK([]byte(skstring))
+			c.Wallet.AddPrivKey(name, sk)
 		case "transfer":
 			// input extra
 			var fromAccount string
-			var fromAccount_PK dsa.PublicKey
 			var fromAccount_SK dsa.PrivateKey
 			var accountName string
 			var accountName_PK dsa.PublicKey
 			var amount int64
+			var ok bool
 			if !c.TokenScanner.Scan() {
 				log.Println("[ERROR] Usage: transfer <from> <to> <amount>")
 				continue
@@ -137,38 +168,30 @@ func (c *CmdApp) Serve() {
 			}
 			amount = int64(tmp)
 
-			totalPayment := int64(0)
-			tx_In := []message.TxIn{}
-
-			c.blockchain.Mtx.Lock()
-			for outPoint, val := range c.blockchain.UTXO {
-				if !val {
-					continue
-				}
-				hash := outPoint.Hash
-				index := outPoint.Index
-				transaction := c.blockchain.TX[hash]
-				txOut := transaction.Tx_out[index]
-				if /*string(txOut.Pk_script) == fromAccount*/
-				string(txOut.Pk_script) == string(PK2Bytes(fromAccount_PK)) {
-					value := txOut.Value
-					totalPayment += value
-					txIn := message.TxIn{
-						Previous_output:                          outPoint,
-						Signature_script: /*[]byte(fromAccount)*/ nil,
-					}
-					tx_In = append(tx_In, txIn)
-				}
-				if totalPayment >= amount {
-					break
-				}
+			accountName_PK, ok = c.Wallet.Pubkey[accountName]
+			if !ok {
+				log.Printf("[ERROR] No known pubkey for %v\n", accountName)
+				continue
 			}
-
-			oput := []message.TxOut{{Value: amount, Pk_script: /*[]byte(accountName)*/ PK2Bytes(accountName_PK)}}
+			fromAccount_SK, ok = c.Wallet.GetSK(fromAccount) // TODO: this line is not thread safe
+			if !ok {
+				log.Printf("[ERROR] No known privkey for %v\n", fromAccount)
+				continue
+			}
+			totalPayment, outpoints := c.Wallet.MakeTxIn(fromAccount, amount)
+			if totalPayment < amount {
+				log.Println("[ERROR] No transfer was made, because your don't have enough money.")
+				continue
+			}
+			tx_In := []message.TxIn{}
+			for _, o := range outpoints {
+				tx_In = append(tx_In, message.TxIn{ Previous_output: o })
+			}
+			oput := []message.TxOut{{Value: amount, Pk_script: PK2Bytes(accountName_PK)}}
 			if totalPayment > amount {
 				oput = append(oput, message.TxOut{
 					Value:                             totalPayment - amount,
-					Pk_script: /*[]byte(fromAccount)*/ PK2Bytes(fromAccount_PK),
+					Pk_script: PK2Bytes(fromAccount_SK.PublicKey),
 				})
 			}
 			if totalPayment >= amount {
@@ -184,13 +207,11 @@ func (c *CmdApp) Serve() {
 					transaction.Tx_in[i].Signature_script = signature
 				}
 
+				c.blockchain.Mtx.Lock()
 				c.blockchain.addTransaction(transaction)
 				c.blockchain.Mtx.Unlock()
 				c.blockchain.refreshMining()
 				c.peer.BroadcastTransaction(transaction)
-			} else {
-				log.Println("[ERROR] No transfer was made, because your don't have enough money.")
-				c.blockchain.Mtx.Unlock()
 			}
 
 		case "showbalance":
