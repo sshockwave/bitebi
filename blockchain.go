@@ -24,6 +24,7 @@ type BlockChain struct {
 	Mempool     map[[32]byte]message.Transaction
 	MineVersion int
 	MineBarrier sync.Mutex
+	MinerPaused bool
 	// The height of blocks
 	// used to examine the existence of a block
 	Height map[[32]byte]int
@@ -505,13 +506,19 @@ func (b *BlockChain) mine(version int32, nBits uint32, peer *Peer, Pk_script []b
 }
 
 func (b *BlockChain) ResumeMining() {
+	b.Mtx.Lock()
+	defer b.Mtx.Unlock()
+	b.MinerPaused = false
 	b.MineBarrier.Unlock()
 }
 
 func (b *BlockChain) PauseMining() {
-	b.MineBarrier.Lock()
 	b.Mtx.Lock()
 	defer b.Mtx.Unlock()
+	if !b.MinerPaused {
+		b.MinerPaused = true
+		b.MineBarrier.Lock()
+	}
 	b.MineVersion++
 }
 

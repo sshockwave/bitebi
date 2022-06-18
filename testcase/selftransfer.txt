@@ -1,0 +1,5 @@
+serve 10001
+mine
+sleep 10
+stopmining
+transfer self self 1
