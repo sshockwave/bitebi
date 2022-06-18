@@ -207,9 +207,12 @@ func (c *CmdApp) Serve() {
 
 				c.blockchain.Mtx.Lock()
 				c.blockchain.addTransaction(transaction)
+				mempool_size := len(c.blockchain.Mempool)
 				c.blockchain.Mtx.Unlock()
 				c.Wallet.RemoveUTXO(fromAccount, outpoints)
-				c.blockchain.refreshMining()
+				if mempool_size < 100 {
+					c.blockchain.refreshMining()
+				}
 				c.peer.BroadcastTransaction(transaction)
 			}
 
