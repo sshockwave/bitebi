@@ -188,7 +188,7 @@ func (c *CmdApp) Serve() {
 			for _, o := range outpoints {
 				tx_In = append(tx_In, message.TxIn{ Previous_output: o })
 			}
-			oput := []message.TxOut{{Value: amount, Pk_script: PK2Bytes(accountName_PK)}}
+			oput := []message.TxOut{{Value: amount, Pk_script: GenerateP2PKHPkScript(accountName_PK)}}
 			if totalPayment > amount {
 				oput = append(oput, message.TxOut{
 					Value:                             totalPayment - amount,
